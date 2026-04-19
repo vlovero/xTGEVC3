@@ -1,0 +1,7 @@
+.DS_Store
+.cache
+.clangd
+.removed
+.vscode
+build
+build.sh
