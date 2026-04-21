@@ -135,7 +135,7 @@ inline int islanb(const float *S, int n, int lds, int curr, int bsize)
  * < 0 if an argument is invalid.
  * =====================================================================
  */
-int slauhs(int n, int nrhs, RP(float) A, int lda, RP(float) B, int ldb)
+int slauhs(int n, int nrhs, float *A, int lda, float *B, int ldb)
 {
     int j, k, pivot_row;
     float mult, alpha;
@@ -243,7 +243,7 @@ int slauhs(int n, int nrhs, RP(float) A, int lda, RP(float) B, int ldb)
  * < 0 if an argument is invalid.
  * =====================================================================
  */
-int slau2s(int n, int nrhs, RP(float) A, int lda, RP(float) B, int ldb)
+int slau2s(int n, int nrhs, float *A, int lda, float *B, int ldb)
 {
     int j, k, pivot_row;
     float max_val, mult1, mult2, alpha;
@@ -369,7 +369,7 @@ int slau2s(int n, int nrhs, RP(float) A, int lda, RP(float) B, int ldb)
  * > 0 if A is singular (returns the 1-based index of the zero pivot).
  * =====================================================================
  */
-int slalhs(int n, int nrhs, RP(float) A, int lda, int *jpiv, RP(float) B, int ldb)
+int slalhs(int n, int nrhs, float *A, int lda, int *jpiv, float *B, int ldb)
 {
     int k, p, i, c;
     float max_val, pivot, m, alpha;
@@ -464,7 +464,7 @@ int slalhs(int n, int nrhs, RP(float) A, int lda, int *jpiv, RP(float) B, int ld
  * > 0 if A is singular (returns the 1-based index of the zero pivot).
  * =====================================================================
  */
-int slal2s(int n, int nrhs, RP(float) A, int lda, int *jpiv, RP(float) B, int ldb)
+int slal2s(int n, int nrhs, float *A, int lda, int *jpiv, float *B, int ldb)
 {
     int k, p, i, c;
     float max_val, pivot, m1, m2, alpha;
@@ -585,7 +585,7 @@ int slal2s(int n, int nrhs, RP(float) A, int lda, int *jpiv, RP(float) B, int ld
  * Number of actively selected eigenvectors in this block.
  * =====================================================================
  */
-void slalsr(int ldS, const float *S, int ldP, const float *P, int m_size, int ldV, RP(float) rhs_loc, RP(float) X_panel_base, int panel_rows, int nb, const float *alphar, const float *alphai, const float *beta, int is_diag, RP(float) work, float ascale, float bscale, float safemin, float bignum, const int *col_map, int nb_sel)
+void slalsr(int ldS, const float *S, int ldP, const float *P, int m_size, int ldV, float *rhs_loc, float *X_panel_base, int panel_rows, int nb, const float *alphar, const float *alphai, const float *beta, int is_diag, float *work, float ascale, float bscale, float safemin, float bignum, const int *col_map, int nb_sel)
 {
     int k, cur_m, c, r, dim2, i, c_scale, r_scale, c_packed;
     float sk_kp1, pk_kp1, s_kk, p_kk;
@@ -849,7 +849,7 @@ void slalsr(int ldS, const float *S, int ldP, const float *P, int m_size, int ld
  * Number of actively selected eigenvectors in this block.
  * =====================================================================
  */
-void slalsl(int ldS, const float *S, int ldP, const float *P, int m_size, int ldV, RP(float) rhs_loc, RP(float) X_panel_base, int panel_rows, int nb, const float *alphar, const float *alphai, const float *beta, int is_diag, RP(float) work, float ascale, float bscale, float safemin, float bignum, const int *col_map, int nb_sel)
+void slalsl(int ldS, const float *S, int ldP, const float *P, int m_size, int ldV, float *rhs_loc, float *X_panel_base, int panel_rows, int nb, const float *alphar, const float *alphai, const float *beta, int is_diag, float *work, float ascale, float bscale, float safemin, float bignum, const int *col_map, int nb_sel)
 {
     int k, cur_m, row_offset, c, r, i, dim2, c_scale, r_scale, c_packed;
     int jpiv[128];
@@ -1132,7 +1132,7 @@ void slalsl(int ldS, const float *S, int ldP, const float *P, int m_size, int ld
  * Exit code: 0 on success, <0 for invalid args.
  * =====================================================================
  */
-void stgevc3(char side, char howmny, const int *select, int n, const float *S, int lds, const float *P, int ldp, const float *alphar, const float *alphai, const float *beta, RP(float) VL, int ldvl, RP(float) VR, int ldvr, int mm, int *m, RP(float) work, int lwork, int *info)
+void stgevc3(char side, char howmny, const int *select, int n, const float *S, int lds, const float *P, int ldp, const float *alphar, const float *alphai, const float *beta, float *VL, int ldvl, float *VR, int ldvr, int mm, int *m, float *work, int lwork, int *info)
 {
     bool compute_right, compute_left, do_all, do_back, do_sel, selected;
     int req_lwork;

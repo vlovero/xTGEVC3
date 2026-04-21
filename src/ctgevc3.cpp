@@ -113,7 +113,7 @@ inline int iclanb(int n, int curr, int bsize)
  * Number of actively selected eigenvectors in this block.
  * =====================================================================
  */
-void clalsr(int ldS, const std::complex<float> *S, int ldP, const std::complex<float> *P, int m_size, int ldV, RP(std::complex<float>) rhs_loc, RP(std::complex<float>) X_panel_base, int panel_rows, int nb, const std::complex<float> *alpha, const std::complex<float> *beta, int is_diag, RP(std::complex<float>) work, float ascale, float bscale, float safemin, float bignum, const int *col_map, int nb_sel)
+void clalsr(int ldS, const std::complex<float> *S, int ldP, const std::complex<float> *P, int m_size, int ldV, std::complex<float> *rhs_loc, std::complex<float> *X_panel_base, int panel_rows, int nb, const std::complex<float> *alpha, const std::complex<float> *beta, int is_diag, std::complex<float> *work, float ascale, float bscale, float safemin, float bignum, const int *col_map, int nb_sel)
 {
     int k, cur_m, c, r, c_scale, r_scale, c_packed;
     std::complex<float> a, b_val, acoeff, bcoeff;
@@ -259,7 +259,7 @@ void clalsr(int ldS, const std::complex<float> *S, int ldP, const std::complex<f
  * Number of actively selected eigenvectors in this block.
  * =====================================================================
  */
-void clalsl(int ldS, const std::complex<float> *S, int ldP, const std::complex<float> *P, int m_size, int ldV, RP(std::complex<float>) rhs_loc, RP(std::complex<float>) X_panel_base, int panel_rows, int nb, const std::complex<float> *alpha, const std::complex<float> *beta, int is_diag, RP(std::complex<float>) work, float ascale, float bscale, float safemin, float bignum, const int *col_map, int nb_sel)
+void clalsl(int ldS, const std::complex<float> *S, int ldP, const std::complex<float> *P, int m_size, int ldV, std::complex<float> *rhs_loc, std::complex<float> *X_panel_base, int panel_rows, int nb, const std::complex<float> *alpha, const std::complex<float> *beta, int is_diag, std::complex<float> *work, float ascale, float bscale, float safemin, float bignum, const int *col_map, int nb_sel)
 {
     int k, cur_m, row_offset, c, r, c_scale, r_scale, c_packed;
     std::complex<float> a, b_val, acoeff, bcoeff, sr1, pr1;
@@ -431,7 +431,7 @@ void clalsl(int ldS, const std::complex<float> *S, int ldP, const std::complex<f
  * Exit code: 0 on success, <0 for invalid args.
  * =====================================================================
  */
-void ctgevc3(char side, char howmny, const int *select, int n, const std::complex<float> *S, int lds, const std::complex<float> *P, int ldp, const std::complex<float> *alpha, const std::complex<float> *beta, RP(std::complex<float>) VL, int ldvl, RP(std::complex<float>) VR, int ldvr, int mm, int *m, RP(std::complex<float>) work, int lwork, int *info)
+void ctgevc3(char side, char howmny, const int *select, int n, const std::complex<float> *S, int lds, const std::complex<float> *P, int ldp, const std::complex<float> *alpha, const std::complex<float> *beta, std::complex<float> *VL, int ldvl, std::complex<float> *VR, int ldvr, int mm, int *m, std::complex<float> *work, int lwork, int *info)
 {
     bool compute_right, compute_left, do_all, do_back, do_sel;
     int num_sel, k_idx, bsize, req_lwork;

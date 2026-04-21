@@ -127,7 +127,7 @@ inline int idlanb(const double *S, int n, int lds, int curr, int bsize)
  * < 0 if an argument is invalid.
  * =====================================================================
  */
-int dlauhs(int n, int nrhs, RP(double) A, int lda, RP(double) B, int ldb)
+int dlauhs(int n, int nrhs, double *A, int lda, double *B, int ldb)
 {
     int j, k, pivot_row;
     double mult, alpha;
@@ -241,7 +241,7 @@ int dlauhs(int n, int nrhs, RP(double) A, int lda, RP(double) B, int ldb)
  * < 0 if an argument is invalid.
  * =====================================================================
  */
-int dlau2s(int n, int nrhs, RP(double) A, int lda, RP(double) B, int ldb)
+int dlau2s(int n, int nrhs, double *A, int lda, double *B, int ldb)
 {
     int j, k, pivot_row;
     double max_val, mult1, mult2, alpha;
@@ -374,7 +374,7 @@ int dlau2s(int n, int nrhs, RP(double) A, int lda, RP(double) B, int ldb)
  * > 0 if A is singular (returns the 1-based index of the zero pivot).
  * =====================================================================
  */
-int dlalhs(int n, int nrhs, RP(double) A, int lda, int *jpiv, RP(double) B, int ldb)
+int dlalhs(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
 {
     int k, p, i, c;
     double max_val, pivot, m, alpha;
@@ -477,7 +477,7 @@ int dlalhs(int n, int nrhs, RP(double) A, int lda, int *jpiv, RP(double) B, int 
  * > 0 if A is singular (returns the 1-based index of the zero pivot).
  * =====================================================================
  */
-int dlal2s(int n, int nrhs, RP(double) A, int lda, int *jpiv, RP(double) B, int ldb)
+int dlal2s(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
 {
     int k, p, i, c;
     double max_val, pivot, m1, m2, alpha;
@@ -605,7 +605,7 @@ int dlal2s(int n, int nrhs, RP(double) A, int lda, int *jpiv, RP(double) B, int 
  * Number of actively selected eigenvectors in this block.
  * =====================================================================
  */
-void dlalsr(int ldS, const double *S, int ldP, const double *P, int m_size, int ldV, RP(double) rhs_loc, RP(double) X_panel_base, int panel_rows, int nb, const double *alphar, const double *alphai, const double *beta, int is_diag, RP(double) work, double ascale, double bscale, double safemin, double bignum, const int *col_map, int nb_sel)
+void dlalsr(int ldS, const double *S, int ldP, const double *P, int m_size, int ldV, double *rhs_loc, double *X_panel_base, int panel_rows, int nb, const double *alphar, const double *alphai, const double *beta, int is_diag, double *work, double ascale, double bscale, double safemin, double bignum, const int *col_map, int nb_sel)
 {
     int k, cur_m, c, r, dim2, i, c_scale, r_scale, c_packed;
     double sk_kp1, pk_kp1, s_kk, p_kk;
@@ -870,7 +870,7 @@ void dlalsr(int ldS, const double *S, int ldP, const double *P, int m_size, int 
  * Number of actively selected eigenvectors in this block.
  * =====================================================================
  */
-void dlalsl(int ldS, const double *S, int ldP, const double *P, int m_size, int ldV, RP(double) rhs_loc, RP(double) X_panel_base, int panel_rows, int nb, const double *alphar, const double *alphai, const double *beta, int is_diag, RP(double) work, double ascale, double bscale, double safemin, double bignum, const int *col_map, int nb_sel)
+void dlalsl(int ldS, const double *S, int ldP, const double *P, int m_size, int ldV, double *rhs_loc, double *X_panel_base, int panel_rows, int nb, const double *alphar, const double *alphai, const double *beta, int is_diag, double *work, double ascale, double bscale, double safemin, double bignum, const int *col_map, int nb_sel)
 {
     int k, cur_m, row_offset, c, r, i, dim2, c_scale, r_scale, c_packed;
     int jpiv[128];
@@ -1151,7 +1151,7 @@ void dlalsl(int ldS, const double *S, int ldP, const double *P, int m_size, int 
  * Exit code: 0 on success, <0 for invalid args.
  * =====================================================================
  */
-void dtgevc3(char side, char howmny, const int *select, int n, const double *S, int lds, const double *P, int ldp, const double *alphar, const double *alphai, const double *beta, RP(double) VL, int ldvl, RP(double) VR, int ldvr, int mm, int *m, RP(double) work, int lwork, int *info)
+void dtgevc3(char side, char howmny, const int *select, int n, const double *S, int lds, const double *P, int ldp, const double *alphar, const double *alphai, const double *beta, double *VL, int ldvl, double *VR, int ldvr, int mm, int *m, double *work, int lwork, int *info)
 {
     bool compute_right, compute_left, do_all, do_back, do_sel, selected;
     int req_lwork;

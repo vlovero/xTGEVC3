@@ -113,7 +113,7 @@ inline int izlanb(int n, int curr, int bsize)
  * Number of actively selected eigenvectors in this block.
  * =====================================================================
  */
-void zlalsr(int ldS, const std::complex<double> *S, int ldP, const std::complex<double> *P, int m_size, int ldV, RP(std::complex<double>) rhs_loc, RP(std::complex<double>) X_panel_base, int panel_rows, int nb, const std::complex<double> *alpha, const std::complex<double> *beta, int is_diag, RP(std::complex<double>) work, double ascale, double bscale, double safemin, double bignum, const int *col_map, int nb_sel)
+void zlalsr(int ldS, const std::complex<double> *S, int ldP, const std::complex<double> *P, int m_size, int ldV, std::complex<double> *rhs_loc, std::complex<double> *X_panel_base, int panel_rows, int nb, const std::complex<double> *alpha, const std::complex<double> *beta, int is_diag, std::complex<double> *work, double ascale, double bscale, double safemin, double bignum, const int *col_map, int nb_sel)
 {
     int k, cur_m, c, r, c_scale, r_scale, c_packed;
     std::complex<double> a, b_val, acoeff, bcoeff;
@@ -259,7 +259,7 @@ void zlalsr(int ldS, const std::complex<double> *S, int ldP, const std::complex<
  * Number of actively selected eigenvectors in this block.
  * =====================================================================
  */
-void zlalsl(int ldS, const std::complex<double> *S, int ldP, const std::complex<double> *P, int m_size, int ldV, RP(std::complex<double>) rhs_loc, RP(std::complex<double>) X_panel_base, int panel_rows, int nb, const std::complex<double> *alpha, const std::complex<double> *beta, int is_diag, RP(std::complex<double>) work, double ascale, double bscale, double safemin, double bignum, const int *col_map, int nb_sel)
+void zlalsl(int ldS, const std::complex<double> *S, int ldP, const std::complex<double> *P, int m_size, int ldV, std::complex<double> *rhs_loc, std::complex<double> *X_panel_base, int panel_rows, int nb, const std::complex<double> *alpha, const std::complex<double> *beta, int is_diag, std::complex<double> *work, double ascale, double bscale, double safemin, double bignum, const int *col_map, int nb_sel)
 {
     int k, cur_m, row_offset, c, r, c_scale, r_scale, c_packed;
     std::complex<double> a, b_val, acoeff, bcoeff, sr1, pr1;
@@ -431,7 +431,7 @@ void zlalsl(int ldS, const std::complex<double> *S, int ldP, const std::complex<
  * Exit code: 0 on success, <0 for invalid args.
  * =====================================================================
  */
-void ztgevc3(char side, char howmny, const int *select, int n, const std::complex<double> *S, int lds, const std::complex<double> *P, int ldp, const std::complex<double> *alpha, const std::complex<double> *beta, RP(std::complex<double>) VL, int ldvl, RP(std::complex<double>) VR, int ldvr, int mm, int *m, RP(std::complex<double>) work, int lwork, int *info)
+void ztgevc3(char side, char howmny, const int *select, int n, const std::complex<double> *S, int lds, const std::complex<double> *P, int ldp, const std::complex<double> *alpha, const std::complex<double> *beta, std::complex<double> *VL, int ldvl, std::complex<double> *VR, int ldvr, int mm, int *m, std::complex<double> *work, int lwork, int *info)
 {
     bool compute_right, compute_left, do_all, do_back, do_sel;
     int num_sel, k_idx, bsize, req_lwork;
