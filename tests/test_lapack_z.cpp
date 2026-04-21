@@ -51,10 +51,12 @@ double zget52_residual(bool left, int n, const std::complex<double> *S, int lds,
     safemin = std::numeric_limits<double>::min();
     eps = std::numeric_limits<double>::epsilon();
 
-    if (normS == 0.0)
+    if (normS == 0.0) {
         normS = 1.0;
-    if (normP == 0.0)
+    }
+    if (normP == 0.0) {
         normP = 1.0;
+    }
 
     max_err = 0.0;
     r_vec = (std::complex<double> *)malloc(n * sizeof(std::complex<double>));
@@ -75,8 +77,9 @@ double zget52_residual(bool left, int n, const std::complex<double> *S, int lds,
             normV = 1.0;
         }
 
-        for (i = 0; i < n; i++)
+        for (i = 0; i < n; i++) {
             r_vec[i] = std::complex<double>(0.0, 0.0);
+        }
 
         if (!left) {
             for (c = 0; c < n; ++c) {
@@ -176,8 +179,9 @@ void run_test_case(int n, const char *test_name, double scale_S = 1.0, double sc
     work_lapack = (std::complex<double> *)malloc(2 * n * sizeof(std::complex<double>));
     rwork_lapack = (double *)malloc(2 * n * sizeof(double));
 
-    for (i = 0; i < n; i++)
+    for (i = 0; i < n; i++) {
         select[i] = 0;
+    }
     for (i = 0; i < n * n; i++) {
         VR3[i] = { 0.0, 0.0 };
         VL3[i] = { 0.0, 0.0 };

@@ -51,10 +51,12 @@ float cget52_residual(bool left, int n, const std::complex<float> *S, int lds, c
     safemin = std::numeric_limits<float>::min();
     eps = std::numeric_limits<float>::epsilon();
 
-    if (normS == 0.0f)
+    if (normS == 0.0f) {
         normS = 1.0f;
-    if (normP == 0.0f)
+    }
+    if (normP == 0.0f) {
         normP = 1.0f;
+    }
 
     max_err = 0.0f;
     r_vec = (std::complex<float> *)malloc(n * sizeof(std::complex<float>));
@@ -75,8 +77,9 @@ float cget52_residual(bool left, int n, const std::complex<float> *S, int lds, c
             normV = 1.0f;
         }
 
-        for (i = 0; i < n; i++)
+        for (i = 0; i < n; i++) {
             r_vec[i] = std::complex<float>(0.0f, 0.0f);
+        }
 
         if (!left) {
             for (c = 0; c < n; ++c) {
@@ -176,8 +179,9 @@ void run_test_case(int n, const char *test_name, float scale_S = 1.0f, float sca
     work_lapack = (std::complex<float> *)malloc(2 * n * sizeof(std::complex<float>));
     rwork_lapack = (float *)malloc(2 * n * sizeof(float));
 
-    for (i = 0; i < n; i++)
+    for (i = 0; i < n; i++) {
         select[i] = 0;
+    }
     for (i = 0; i < n * n; i++) {
         VR3[i] = { 0.0f, 0.0f };
         VL3[i] = { 0.0f, 0.0f };

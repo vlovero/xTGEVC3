@@ -24,17 +24,21 @@ float check_right_eigenvector_residual_gevp_s(int n, const float *S, int lds, co
     float *r_vec;
 
     for (c = 0; c < n; c++) {
-        for (r = 0; r <= std::min(c + 1, n - 1); r++)
+        for (r = 0; r <= std::min(c + 1, n - 1); r++) {
             normS += S[r + c * lds] * S[r + c * lds];
-        for (r = 0; r <= c; r++)
+        }
+        for (r = 0; r <= c; r++) {
             normP += P[r + c * ldp] * P[r + c * ldp];
+        }
     }
     normS = std::sqrt(normS);
     normP = std::sqrt(normP);
-    if (normS == 0.0f)
+    if (normS == 0.0f) {
         normS = 1.0f;
-    if (normP == 0.0f)
+    }
+    if (normP == 0.0f) {
         normP = 1.0f;
+    }
 
     r_vec = (float *)malloc(n * sizeof(float));
 
@@ -42,14 +46,16 @@ float check_right_eigenvector_residual_gevp_s(int n, const float *S, int lds, co
     while (c < n) {
         if (alphai[c] == 0.0f) {
             float a = alphar[c], b = beta[c], alpha_term = -a, beta_term = b, alpha_zero = 0.0f, norm_r, norm_v;
-            for (i = 0; i < n; i++)
+            for (i = 0; i < n; i++) {
                 r_vec[i] = 0.0f;
+            }
             sgemv_("N", &n, &n, &beta_term, S, &lds, &VR[c * ldvr], &incx, &alpha_zero, r_vec, &incy);
             beta_term = 1.0f;
             sgemv_("N", &n, &n, &alpha_term, P, &ldp, &VR[c * ldvr], &incx, &beta_term, r_vec, &incy);
 
-            for (i = 0; i < n; i++)
+            for (i = 0; i < n; i++) {
                 r_vec[i] = 0.0f;
+            }
             for (col = 0; col < n; col++) {
                 for (row = 0; row <= std::min(col + 1, n - 1); row++) {
                     r_vec[row] += b * S[row + col * lds] * VR[col + c * ldvr];
@@ -104,17 +110,21 @@ float check_left_eigenvector_residual_gevp_s(int n, const float *S, int lds, con
     float *r_vec;
 
     for (c = 0; c < n; c++) {
-        for (r = 0; r <= std::min(c + 1, n - 1); r++)
+        for (r = 0; r <= std::min(c + 1, n - 1); r++) {
             normS += S[r + c * lds] * S[r + c * lds];
-        for (r = 0; r <= c; r++)
+        }
+        for (r = 0; r <= c; r++) {
             normP += P[r + c * ldp] * P[r + c * ldp];
+        }
     }
     normS = std::sqrt(normS);
     normP = std::sqrt(normP);
-    if (normS == 0.0f)
+    if (normS == 0.0f) {
         normS = 1.0f;
-    if (normP == 0.0f)
+    }
+    if (normP == 0.0f) {
         normP = 1.0f;
+    }
 
     r_vec = (float *)malloc(n * sizeof(float));
 
@@ -122,8 +132,9 @@ float check_left_eigenvector_residual_gevp_s(int n, const float *S, int lds, con
     while (c < n) {
         if (alphai[c] == 0.0f) {
             float a = alphar[c], b = beta[c], norm_r, norm_v;
-            for (i = 0; i < n; i++)
+            for (i = 0; i < n; i++) {
                 r_vec[i] = 0.0f;
+            }
 
             for (col = 0; col < n; col++) {
                 for (row = 0; row <= std::min(col + 1, n - 1); row++) {
@@ -200,8 +211,9 @@ void generate_generalized_quasi_triangular_s(int n, float *S, int lds, float *P,
             a = S[k + k * lds];
             S[(k + 1) + (k + 1) * lds] = a;
             b = S[k + (k + 1) * lds];
-            if (b == 0.0f)
+            if (b == 0.0f) {
                 b = 1.0f;
+            }
             S[(k + 1) + k * lds] = -b;
 
             alphar[k] = a;

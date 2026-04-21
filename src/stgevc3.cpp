@@ -41,16 +41,21 @@ int slauhs(int n, int nrhs, RP(float) A, int lda, RP(float) B, int ldb)
     float mult, alpha;
     char side = 'L', uplo = 'U', transa = 'N', diag = 'N';
 
-    if (n < 0)
+    if (n < 0) {
         return -1;
-    if (nrhs < 0)
+    }
+    if (nrhs < 0) {
         return -2;
-    if (lda < std::max(1, n))
+    }
+    if (lda < std::max(1, n)) {
         return -4;
-    if (ldb < std::max(1, n))
+    }
+    if (ldb < std::max(1, n)) {
         return -6;
-    if (n == 0)
+    }
+    if (n == 0) {
         return 0;
+    }
 
     for (j = 0; j < n - 1; j++) {
         pivot_row = j;
@@ -58,27 +63,33 @@ int slauhs(int n, int nrhs, RP(float) A, int lda, RP(float) B, int ldb)
             pivot_row = j + 1;
         }
 
-        if (A[pivot_row + j * lda] == 0.0f)
+        if (A[pivot_row + j * lda] == 0.0f) {
             return j + 1;
+        }
 
         if (pivot_row != j) {
-            for (k = j; k < n; k++)
+            for (k = j; k < n; k++) {
                 std::swap(A[j + k * lda], A[pivot_row + k * lda]);
-            for (k = 0; k < nrhs; k++)
+            }
+            for (k = 0; k < nrhs; k++) {
                 std::swap(B[j + k * ldb], B[pivot_row + k * ldb]);
+            }
         }
 
         mult = A[(j + 1) + j * lda] / A[j + j * lda];
         A[(j + 1) + j * lda] = 0.0f;
 
-        for (k = j + 1; k < n; k++)
+        for (k = j + 1; k < n; k++) {
             A[(j + 1) + k * lda] -= mult * A[j + k * lda];
-        for (k = 0; k < nrhs; k++)
+        }
+        for (k = 0; k < nrhs; k++) {
             B[(j + 1) + k * ldb] -= mult * B[j + k * ldb];
+        }
     }
 
-    if (A[(n - 1) + (n - 1) * lda] == 0.0f)
+    if (A[(n - 1) + (n - 1) * lda] == 0.0f) {
         return n;
+    }
 
     if (nrhs > 0) {
         alpha = 1.0f;
@@ -93,16 +104,21 @@ int slau2s(int n, int nrhs, RP(float) A, int lda, RP(float) B, int ldb)
     float max_val, mult1, mult2, alpha;
     char side = 'L', uplo = 'U', transa = 'N', diag = 'N';
 
-    if (n < 0)
+    if (n < 0) {
         return -1;
-    if (nrhs < 0)
+    }
+    if (nrhs < 0) {
         return -2;
-    if (lda < std::max(1, n))
+    }
+    if (lda < std::max(1, n)) {
         return -4;
-    if (ldb < std::max(1, n))
+    }
+    if (ldb < std::max(1, n)) {
         return -6;
-    if (n == 0)
+    }
+    if (n == 0) {
         return 0;
+    }
 
     for (j = 0; j < n - 1; j++) {
         pivot_row = j;
@@ -117,36 +133,44 @@ int slau2s(int n, int nrhs, RP(float) A, int lda, RP(float) B, int ldb)
             pivot_row = j + 2;
         }
 
-        if (max_val == 0.0f)
+        if (max_val == 0.0f) {
             return j + 1;
+        }
 
         if (pivot_row != j) {
-            for (k = j; k < n; k++)
+            for (k = j; k < n; k++) {
                 std::swap(A[j + k * lda], A[pivot_row + k * lda]);
-            for (k = 0; k < nrhs; k++)
+            }
+            for (k = 0; k < nrhs; k++) {
                 std::swap(B[j + k * ldb], B[pivot_row + k * ldb]);
+            }
         }
 
         mult1 = A[(j + 1) + j * lda] / A[j + j * lda];
         A[(j + 1) + j * lda] = 0.0f;
 
-        for (k = j + 1; k < n; k++)
+        for (k = j + 1; k < n; k++) {
             A[(j + 1) + k * lda] -= mult1 * A[j + k * lda];
-        for (k = 0; k < nrhs; k++)
+        }
+        for (k = 0; k < nrhs; k++) {
             B[(j + 1) + k * ldb] -= mult1 * B[j + k * ldb];
+        }
 
         if (j + 2 < n) {
             mult2 = A[(j + 2) + j * lda] / A[j + j * lda];
             A[(j + 2) + j * lda] = 0.0f;
-            for (k = j + 1; k < n; k++)
+            for (k = j + 1; k < n; k++) {
                 A[(j + 2) + k * lda] -= mult2 * A[j + k * lda];
-            for (k = 0; k < nrhs; k++)
+            }
+            for (k = 0; k < nrhs; k++) {
                 B[(j + 2) + k * ldb] -= mult2 * B[j + k * ldb];
+            }
         }
     }
 
-    if (A[(n - 1) + (n - 1) * lda] == 0.0f)
+    if (A[(n - 1) + (n - 1) * lda] == 0.0f) {
         return n;
+    }
 
     if (nrhs > 0) {
         alpha = 1.0f;
@@ -171,19 +195,22 @@ int slalhs(int n, int nrhs, RP(float) A, int lda, int *jpiv, RP(float) B, int ld
         jpiv[k] = p;
 
         if (p != k) {
-            for (i = k; i < n; i++)
+            for (i = k; i < n; i++) {
                 std::swap(A[i + k * lda], A[i + p * lda]);
+            }
         }
 
         pivot = A[k + k * lda];
-        if (pivot == 0.0f)
+        if (pivot == 0.0f) {
             return k + 1;
+        }
 
         m = A[k + (k + 1) * lda] / pivot;
         A[k + (k + 1) * lda] = m;
 
-        for (i = k + 1; i < n; i++)
+        for (i = k + 1; i < n; i++) {
             A[i + (k + 1) * lda] -= m * A[i + k * lda];
+        }
     }
 
     alpha = 1.0f;
@@ -194,8 +221,9 @@ int slalhs(int n, int nrhs, RP(float) A, int lda, int *jpiv, RP(float) B, int ld
         p = jpiv[k];
         for (c = 0; c < nrhs; c++) {
             B[k + c * ldb] -= m * B[(k + 1) + c * ldb];
-            if (p != k)
+            if (p != k) {
                 std::swap(B[k + c * ldb], B[p + c * ldb]);
+            }
         }
     }
     return 0;
@@ -221,24 +249,28 @@ int slal2s(int n, int nrhs, RP(float) A, int lda, int *jpiv, RP(float) B, int ld
         jpiv[k] = p;
 
         if (p != k) {
-            for (i = k; i < n; i++)
+            for (i = k; i < n; i++) {
                 std::swap(A[i + k * lda], A[i + p * lda]);
+            }
         }
 
         pivot = A[k + k * lda];
-        if (pivot == 0.0f)
+        if (pivot == 0.0f) {
             return k + 1;
+        }
 
         m1 = A[k + (k + 1) * lda] / pivot;
         A[k + (k + 1) * lda] = m1;
-        for (i = k + 1; i < n; i++)
+        for (i = k + 1; i < n; i++) {
             A[i + (k + 1) * lda] -= m1 * A[i + k * lda];
+        }
 
         if (k + 2 < n) {
             m2 = A[k + (k + 2) * lda] / pivot;
             A[k + (k + 2) * lda] = m2;
-            for (i = k + 1; i < n; i++)
+            for (i = k + 1; i < n; i++) {
                 A[i + (k + 2) * lda] -= m2 * A[i + k * lda];
+            }
         }
     }
 
@@ -252,10 +284,12 @@ int slal2s(int n, int nrhs, RP(float) A, int lda, int *jpiv, RP(float) B, int ld
 
         for (c = 0; c < nrhs; c++) {
             B[k + c * ldb] -= m1 * B[(k + 1) + c * ldb];
-            if (k + 2 < n)
+            if (k + 2 < n) {
                 B[k + c * ldb] -= m2 * B[(k + 2) + c * ldb];
-            if (p != k)
+            }
+            if (p != k) {
                 std::swap(B[k + c * ldb], B[p + c * ldb]);
+            }
         }
     }
     return 0;
@@ -710,8 +744,9 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
 
     if (n == 0) {
         *info = 0;
-        if (m != nullptr)
+        if (m != nullptr) {
             *m = 0;
+        }
         return;
     }
 
@@ -747,8 +782,9 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
     if (lwork != -1 && lwork < req_lwork) {
         for (bsize = 63; bsize >= 1; bsize--) {
             req_lwork = 2 * n * (bsize + 1) + 4 * (bsize + 1) * (bsize + 1) + 2 * (bsize + 1);
-            if (lwork >= req_lwork)
+            if (lwork >= req_lwork) {
                 break;
+            }
         }
     }
 
@@ -816,8 +852,9 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
                         col_map[c + 1] = nb_sel++;
                         c += 2;
                     }
-                    else
+                    else {
                         c += 1;
+                    }
                 }
                 else {
                     col_map[c] = -1;
@@ -825,8 +862,9 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
                         col_map[c + 1] = -1;
                         c += 2;
                     }
-                    else
+                    else {
                         c += 1;
+                    }
                 }
             }
 
@@ -838,8 +876,9 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
             }
 
             for (c = 0; c < nb_sel; c++) {
-                for (r = 0; r < curr_col; r++)
+                for (r = 0; r < curr_col; r++) {
                     X_panel[r + c * ld_x] = 0.0f;
+                }
             }
 
             curr_row = curr_col;
@@ -912,8 +951,9 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
                             TempP[idx] *= scale;
                         }
                         for (c_idx = 0; c_idx < nb_sel; ++c_idx) {
-                            for (r_idx = 0; r_idx < ld_x; ++r_idx)
+                            for (r_idx = 0; r_idx < ld_x; ++r_idx) {
                                 X_panel[r_idx + c_idx * ld_x] *= scale;
+                            }
                         }
                     }
 
@@ -933,17 +973,20 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
 
                 for (c = 0; c < nb_sel; c++) {
                     out_col = current_out_col + c;
-                    for (r = 0; r < n; r++)
+                    for (r = 0; r < n; r++) {
                         VR[r + out_col * ldvr] = Temp[r + c * n];
+                    }
                 }
             }
             else {
                 for (c = 0; c < nb_sel; c++) {
                     out_col = current_out_col + c;
-                    for (r = 0; r < curr_col; r++)
+                    for (r = 0; r < curr_col; r++) {
                         VR[r + out_col * ldvr] = X_panel[r + c * ld_x];
-                    for (r = curr_col; r < n; r++)
+                    }
+                    for (r = curr_col; r < n; r++) {
                         VR[r + out_col * ldvr] = 0.0f;
+                    }
                 }
             }
             curr_col = i;
@@ -977,8 +1020,9 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
                         col_map[c + 1] = nb_sel++;
                         c += 2;
                     }
-                    else
+                    else {
                         c += 1;
+                    }
                 }
                 else {
                     col_map[c] = -1;
@@ -986,8 +1030,9 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
                         col_map[c + 1] = -1;
                         c += 2;
                     }
-                    else
+                    else {
                         c += 1;
+                    }
                 }
             }
 
@@ -997,8 +1042,9 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
             }
 
             for (c = 0; c < nb_sel; c++) {
-                for (r = 0; r < rem_rows; r++)
+                for (r = 0; r < rem_rows; r++) {
                     X_panel[r + c * ld_x] = 0.0f;
+                }
             }
 
             curr_row = i;
@@ -1072,8 +1118,9 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
                             TempP[idx] *= scale;
                         }
                         for (c_idx = 0; c_idx < nb_sel; ++c_idx) {
-                            for (r_idx = 0; r_idx < ld_x; ++r_idx)
+                            for (r_idx = 0; r_idx < ld_x; ++r_idx) {
                                 X_panel[r_idx + c_idx * ld_x] *= scale;
+                            }
                         }
                     }
 
@@ -1093,17 +1140,20 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
 
                 for (c = 0; c < nb_sel; c++) {
                     out_col = current_out_col + c;
-                    for (r = 0; r < n; r++)
+                    for (r = 0; r < n; r++) {
                         VL[r + out_col * ldvl] = Temp[r + c * n];
+                    }
                 }
             }
             else {
                 for (c = 0; c < nb_sel; c++) {
                     out_col = current_out_col + c;
-                    for (r = 0; r < i; r++)
+                    for (r = 0; r < i; r++) {
                         VL[r + out_col * ldvl] = 0.0f;
-                    for (r = 0; r < rem_rows; r++)
+                    }
+                    for (r = 0; r < rem_rows; r++) {
                         VL[(i + r) + out_col * ldvl] = X_panel[r + c * ld_x];
+                    }
                 }
             }
             current_out_col += nb_sel;

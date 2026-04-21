@@ -227,8 +227,9 @@ void generate_quasi_triangular(int n, double *T, int ldt, double *wr, double *wi
     int i, c, r, k;
     double a, b;
 
-    for (i = 0; i < n * n; ++i)
+    for (i = 0; i < n * n; ++i) {
         T[i] = 0.0;
+    }
 
     for (c = 0; c < n; ++c) {
         for (r = 0; r <= c; ++r) {
@@ -243,8 +244,9 @@ void generate_quasi_triangular(int n, double *T, int ldt, double *wr, double *wi
             T[(k + 1) + (k + 1) * ldt] = a;
 
             b = T[k + (k + 1) * ldt];
-            if (b == 0.0)
+            if (b == 0.0) {
                 b = 1.0;
+            }
             T[(k + 1) + k * ldt] = -b;
 
             wr[k] = a;

@@ -42,10 +42,12 @@ float check_right_eigenvector_residual_gevp(int n, const std::complex<float> *S,
 
     normS = std::sqrt(normS);
     normP = std::sqrt(normP);
-    if (normS == 0.0f)
+    if (normS == 0.0f) {
         normS = 1.0f;
-    if (normP == 0.0f)
+    }
+    if (normP == 0.0f) {
         normP = 1.0f;
+    }
 
     r_vec = (std::complex<float> *)malloc(n * sizeof(std::complex<float>));
 
@@ -53,8 +55,9 @@ float check_right_eigenvector_residual_gevp(int n, const std::complex<float> *S,
         a = alpha[c];
         b = beta[c];
 
-        for (i = 0; i < n; i++)
+        for (i = 0; i < n; i++) {
             r_vec[i] = { 0.0f, 0.0f };
+        }
 
         for (col = 0; col < n; col++) {
             for (row = 0; row <= col; row++) {
@@ -89,10 +92,12 @@ float check_left_eigenvector_residual_gevp(int n, const std::complex<float> *S, 
 
     normS = std::sqrt(normS);
     normP = std::sqrt(normP);
-    if (normS == 0.0f)
+    if (normS == 0.0f) {
         normS = 1.0f;
-    if (normP == 0.0f)
+    }
+    if (normP == 0.0f) {
         normP = 1.0f;
+    }
 
     r_vec = (std::complex<float> *)malloc(n * sizeof(std::complex<float>));
 

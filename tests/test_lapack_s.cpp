@@ -72,8 +72,9 @@ float sget52_residual(bool left, int n, const float *S, int lds, const float *P,
                 normV = 1.0f;
             }
 
-            for (i = 0; i < n; i++)
+            for (i = 0; i < n; i++) {
                 r_r[i] = 0.0f;
+            }
 
             if (!left) {
                 for (c = 0; c < n; ++c) {

@@ -768,8 +768,9 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
 
     if (n == 0) {
         *info = 0;
-        if (m != nullptr)
+        if (m != nullptr) {
             *m = 0;
+        }
         return;
     }
 
@@ -805,8 +806,9 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
     if (lwork != -1 && lwork < req_lwork) {
         for (bsize = 63; bsize >= 1; bsize--) {
             req_lwork = 2 * n * (bsize + 1) + 4 * (bsize + 1) * (bsize + 1) + 2 * (bsize + 1);
-            if (lwork >= req_lwork)
+            if (lwork >= req_lwork) {
                 break;
+            }
         }
     }
 
@@ -874,8 +876,9 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                         col_map[c + 1] = nb_sel++;
                         c += 2;
                     }
-                    else
+                    else {
                         c += 1;
+                    }
                 }
                 else {
                     col_map[c] = -1;
@@ -883,8 +886,9 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                         col_map[c + 1] = -1;
                         c += 2;
                     }
-                    else
+                    else {
                         c += 1;
+                    }
                 }
             }
 
@@ -896,8 +900,9 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
             }
 
             for (c = 0; c < nb_sel; c++) {
-                for (r = 0; r < curr_col; r++)
+                for (r = 0; r < curr_col; r++) {
                     X_panel[r + c * ld_x] = 0.0;
+                }
             }
 
             curr_row = curr_col;
@@ -970,8 +975,9 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                             TempP[idx] *= scale;
                         }
                         for (c_idx = 0; c_idx < nb_sel; ++c_idx) {
-                            for (r_idx = 0; r_idx < ld_x; ++r_idx)
+                            for (r_idx = 0; r_idx < ld_x; ++r_idx) {
                                 X_panel[r_idx + c_idx * ld_x] *= scale;
+                            }
                         }
                     }
 
@@ -991,17 +997,20 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
 
                 for (c = 0; c < nb_sel; c++) {
                     out_col = current_out_col + c;
-                    for (r = 0; r < n; r++)
+                    for (r = 0; r < n; r++) {
                         VR[r + out_col * ldvr] = Temp[r + c * n];
+                    }
                 }
             }
             else {
                 for (c = 0; c < nb_sel; c++) {
                     out_col = current_out_col + c;
-                    for (r = 0; r < curr_col; r++)
+                    for (r = 0; r < curr_col; r++) {
                         VR[r + out_col * ldvr] = X_panel[r + c * ld_x];
-                    for (r = curr_col; r < n; r++)
+                    }
+                    for (r = curr_col; r < n; r++) {
                         VR[r + out_col * ldvr] = 0.0;
+                    }
                 }
             }
             curr_col = i;
@@ -1035,8 +1044,9 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                         col_map[c + 1] = nb_sel++;
                         c += 2;
                     }
-                    else
+                    else {
                         c += 1;
+                    }
                 }
                 else {
                     col_map[c] = -1;
@@ -1044,8 +1054,9 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                         col_map[c + 1] = -1;
                         c += 2;
                     }
-                    else
+                    else {
                         c += 1;
+                    }
                 }
             }
 
@@ -1055,8 +1066,9 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
             }
 
             for (c = 0; c < nb_sel; c++) {
-                for (r = 0; r < rem_rows; r++)
+                for (r = 0; r < rem_rows; r++) {
                     X_panel[r + c * ld_x] = 0.0;
+                }
             }
 
             curr_row = i;
@@ -1130,8 +1142,9 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                             TempP[idx] *= scale;
                         }
                         for (c_idx = 0; c_idx < nb_sel; ++c_idx) {
-                            for (r_idx = 0; r_idx < ld_x; ++r_idx)
+                            for (r_idx = 0; r_idx < ld_x; ++r_idx) {
                                 X_panel[r_idx + c_idx * ld_x] *= scale;
+                            }
                         }
                     }
 
@@ -1151,17 +1164,20 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
 
                 for (c = 0; c < nb_sel; c++) {
                     out_col = current_out_col + c;
-                    for (r = 0; r < n; r++)
+                    for (r = 0; r < n; r++) {
                         VL[r + out_col * ldvl] = Temp[r + c * n];
+                    }
                 }
             }
             else {
                 for (c = 0; c < nb_sel; c++) {
                     out_col = current_out_col + c;
-                    for (r = 0; r < i; r++)
+                    for (r = 0; r < i; r++) {
                         VL[r + out_col * ldvl] = 0.0;
-                    for (r = 0; r < rem_rows; r++)
+                    }
+                    for (r = 0; r < rem_rows; r++) {
                         VL[(i + r) + out_col * ldvl] = X_panel[r + c * ld_x];
+                    }
                 }
             }
             current_out_col += nb_sel;
