@@ -33,6 +33,7 @@ inline int idlapb(const double *S, int lds, int curr, int bsize)
 {
     int idx;
 
+    // Safely steps backward by 'bsize', snapping to 2x2 block boundaries.
     idx = std::max(0, curr - bsize);
 
     // Check if the proposed boundary splits a 2x2 block.
@@ -79,6 +80,7 @@ inline int idlanb(const double *S, int n, int lds, int curr, int bsize)
 {
     int idx;
 
+    // Safely steps forward by 'bsize', snapping to 2x2 block boundaries.
     idx = std::min(n, curr + bsize);
 
     // Check if the boundary splits a 2x2 block.
@@ -149,10 +151,11 @@ int dlauhs(int n, int nrhs, double *A, int lda, double *B, int ldb)
         return 0;
     }
 
-    // Forward elimination: traverse columns to eliminate subdiagonal elements
+    // 1. Forward Elimination (Column-oriented traversal)
     for (j = 0; j < n - 1; j++) {
 
-        // Partial pivoting: Select the largest element between A(j,j) and A(j+1,j)
+        // --- Partial Pivoting ---
+        // Select the largest element between A(j,j) and A(j+1,j)
         pivot_row = j;
         if (std::abs(A[(j + 1) + j * lda]) > std::abs(A[j + j * lda])) {
             pivot_row = j + 1;
@@ -163,6 +166,7 @@ int dlauhs(int n, int nrhs, double *A, int lda, double *B, int ldb)
             return j + 1;
         }
 
+        // --- Row Swap ---
         // Apply row swaps to both the operator A and the right-hand side B
         if (pivot_row != j) {
             for (k = j; k < n; k++) {
@@ -173,6 +177,7 @@ int dlauhs(int n, int nrhs, double *A, int lda, double *B, int ldb)
             }
         }
 
+        // --- Row Elimination ---
         // Compute the multiplier to eliminate the subdiagonal element A(j+1, j)
         mult = A[(j + 1) + j * lda] / A[j + j * lda];
         A[(j + 1) + j * lda] = 0.0;
@@ -191,7 +196,7 @@ int dlauhs(int n, int nrhs, double *A, int lda, double *B, int ldb)
         return n;
     }
 
-    // The system is now upper triangular. Solve via TRSM.
+    // 2. Back-substitution (Solve Upper Triangular System)
     if (nrhs > 0) {
         side = 'L';
         uplo = 'U';
@@ -263,10 +268,11 @@ int dlau2s(int n, int nrhs, double *A, int lda, double *B, int ldb)
         return 0;
     }
 
-    // Forward elimination: process both subdiagonals
+    // 1. Forward Elimination (Column-oriented traversal over 2 subdiagonals)
     for (j = 0; j < n - 1; j++) {
 
-        // Partial pivoting across the diagonal and the two elements below it
+        // --- Partial Pivoting ---
+        // Find pivot across the diagonal and the two elements below it
         pivot_row = j;
         max_val = std::abs(A[j + j * lda]);
 
@@ -283,6 +289,7 @@ int dlau2s(int n, int nrhs, double *A, int lda, double *B, int ldb)
             return j + 1;
         }
 
+        // --- Row Swap ---
         // Swap the selected pivot row into the current row position
         if (pivot_row != j) {
             for (k = j; k < n; k++) {
@@ -293,6 +300,7 @@ int dlau2s(int n, int nrhs, double *A, int lda, double *B, int ldb)
             }
         }
 
+        // --- Row Elimination ---
         // Eliminate the first subdiagonal element
         mult1 = A[(j + 1) + j * lda] / A[j + j * lda];
         A[(j + 1) + j * lda] = 0.0;
@@ -322,7 +330,7 @@ int dlau2s(int n, int nrhs, double *A, int lda, double *B, int ldb)
         return n;
     }
 
-    // Solve the resulting upper triangular system
+    // 2. Back-substitution (Solve Upper Triangular System)
     if (nrhs > 0) {
         side = 'L';
         uplo = 'U';
@@ -380,10 +388,10 @@ int dlalhs(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
     double max_val, pivot, m, alpha;
     char side, uplo, transa, diag;
 
-    // Forward elimination: process the single superdiagonal
+    // 1. Forward Elimination (Process the single superdiagonal)
     for (k = 0; k < n - 1; k++) {
 
-        // Find the maximum element for partial pivoting
+        // --- Partial Pivoting ---
         p = k;
         max_val = std::abs(A[k + k * lda]);
 
@@ -394,7 +402,7 @@ int dlalhs(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
         // Store the pivot index so it can be applied to B after solving A
         jpiv[k] = p;
 
-        // Swap columns if necessary
+        // --- Column Swap ---
         if (p != k) {
             for (i = k; i < n; i++) {
                 std::swap(A[i + k * lda], A[i + p * lda]);
@@ -406,17 +414,16 @@ int dlalhs(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
             return k + 1;
         }
 
-        // Compute multiplier and eliminate the superdiagonal element
+        // --- Row Elimination ---
         m = A[k + (k + 1) * lda] / pivot;
         A[k + (k + 1) * lda] = m;
 
-        // Apply multiplier to the rest of the column
         for (i = k + 1; i < n; i++) {
             A[i + (k + 1) * lda] -= m * A[i + k * lda];
         }
     }
 
-    // Solve the resulting lower triangular system A * X = B
+    // 2. Forward-substitution (Solve Lower Triangular System A * X = B)
     side = 'L';
     uplo = 'L';
     transa = 'N';
@@ -424,7 +431,7 @@ int dlalhs(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
     alpha = 1.0;
     dtrsm_(&side, &uplo, &transa, &diag, &n, &nrhs, &alpha, A, &lda, B, &ldb);
 
-    // Backward permutation update: Apply the pivoting history to the solution
+    // 3. Backward permutation update: Apply pivoting history to solution
     for (k = n - 2; k >= 0; --k) {
         m = A[k + (k + 1) * lda];
         p = jpiv[k];
@@ -483,10 +490,10 @@ int dlal2s(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
     double max_val, pivot, m1, m2, alpha;
     char side, uplo, transa, diag;
 
-    // Forward elimination: process both superdiagonals
+    // 1. Forward Elimination (Process both superdiagonals)
     for (k = 0; k < n - 1; k++) {
 
-        // Find the maximum element across the current column and the two superdiagonals
+        // --- Partial Pivoting ---
         p = k;
         max_val = std::abs(A[k + k * lda]);
 
@@ -500,6 +507,7 @@ int dlal2s(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
 
         jpiv[k] = p;
 
+        // --- Column Swap ---
         if (p != k) {
             for (i = k; i < n; i++) {
                 std::swap(A[i + k * lda], A[i + p * lda]);
@@ -511,7 +519,7 @@ int dlal2s(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
             return k + 1;
         }
 
-        // Eliminate the first superdiagonal
+        // --- Row Elimination ---
         m1 = A[k + (k + 1) * lda] / pivot;
         A[k + (k + 1) * lda] = m1;
         for (i = k + 1; i < n; i++) {
@@ -528,7 +536,7 @@ int dlal2s(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
         }
     }
 
-    // Solve the lower triangular system
+    // 2. Forward-substitution (Solve Lower Triangular System)
     side = 'L';
     uplo = 'L';
     transa = 'N';
@@ -536,7 +544,7 @@ int dlal2s(int n, int nrhs, double *A, int lda, int *jpiv, double *B, int ldb)
     alpha = 1.0;
     dtrsm_(&side, &uplo, &transa, &diag, &n, &nrhs, &alpha, A, &lda, B, &ldb);
 
-    // Apply the pivoting and multiplier updates back to the solution
+    // 3. Backward permutation update
     for (k = n - 2; k >= 0; --k) {
         m1 = A[k + (k + 1) * lda];
         m2 = (k + 2 < n) ? A[k + (k + 2) * lda] : 0.0;
@@ -630,15 +638,12 @@ void dlalsr(int ldS, const double *S, int ldP, const double *P, int m_size, int 
         aI = alphai[k];
         b_val = beta[k];
 
-        // ---------------------------------------------------------
-        // Case 1: Real eigenvalue block
-        // ---------------------------------------------------------
         if (aI == 0.0) {
+            // --- REAL EIGENVALUE (1x1 Block) ---
             cur_m = is_diag ? k : m_size;
 
             // Calculate a local scaling factor 't' so that evaluating the local
-            // operator (beta * S - alpha * P) does not overflow. 'ascale' and 'bscale'
-            // are factored in here to ensure matrix norms are respected.
+            // operator (beta * S - alpha * P) does not overflow.
             t = 1.0 / std::max({ std::abs(aR) * ascale, std::abs(b_val) * bscale, safemin });
             acoeff = (t * b_val * bscale) * ascale;
             bcoeffR = (t * aR * ascale) * bscale;
@@ -675,9 +680,6 @@ void dlalsr(int ldS, const double *S, int ldP, const double *P, int m_size, int 
                 }
 
                 // Check for potential overflow in the local linear system solver.
-                // If the maximum RHS value exceeds the safe limit (bignum / 10.0),
-                // systematically scale down the RHS block AND the previously accumulated
-                // X_panel columns to maintain numeric stability.
                 rhs_max = 0.0;
                 for (r = 0; r < cur_m; r++) {
                     rhs_max = std::max(rhs_max, std::abs(work_rhs[r]));
@@ -705,10 +707,8 @@ void dlalsr(int ldS, const double *S, int ldP, const double *P, int m_size, int 
             }
             k += 1;
         }
-        // ---------------------------------------------------------
-        // Case 2: Complex eigenvalue block (2x2 pair)
-        // ---------------------------------------------------------
         else {
+            // --- COMPLEX CONJUGATE PAIR (2x2 Block) ---
             cur_m = is_diag ? k : m_size;
 
             // Factor in both the real (aR) and imaginary (aI) components of the
@@ -731,7 +731,7 @@ void dlalsr(int ldS, const double *S, int ldP, const double *P, int m_size, int 
                 s_kk = S[k + k * ldS];
                 p_kk = P[k + k * ldP];
 
-                // Set up the RHS for the 2x2 diagonal component
+                // Set up the RHS exactly via the 2x2 diagonal mathematical component
                 rhs_loc[k + c_packed * ldV] = -(acoeff * sk_kp1 - bcoeffR * pk_kp1);
                 rhs_loc[k + (c_packed + 1) * ldV] = bcoeffI * pk_kp1;
 
@@ -746,8 +746,8 @@ void dlalsr(int ldS, const double *S, int ldP, const double *P, int m_size, int 
                     work[i] = 0.0;
                 }
 
-                // Populate the workspace with interleaved real and imaginary components
-                // to form the 2-subdiagonal matrix for the complex solve.
+                // Build shifted complex block system / scale local operator
+                // Populate the workspace with interleaved real and imaginary components.
                 for (c = 0; c < cur_m; c++) {
                     for (r = 0; r < cur_m; r++) {
                         val_real = acoeff * S[r + c * ldS] - bcoeffR * P[r + c * ldP];
@@ -894,10 +894,8 @@ void dlalsl(int ldS, const double *S, int ldP, const double *P, int m_size, int 
         aI = alphai[k];
         b_val = beta[k];
 
-        // ---------------------------------------------------------
-        // Case 1: Real eigenvalue block
-        // ---------------------------------------------------------
         if (aI == 0.0) {
+            // --- REAL EIGENVALUE (1x1 Block) ---
             cur_m = is_diag ? nb - 1 - k : m_size;
             row_offset = is_diag ? k + 1 : 0;
 
@@ -966,10 +964,8 @@ void dlalsl(int ldS, const double *S, int ldP, const double *P, int m_size, int 
             }
             k += 1;
         }
-        // ---------------------------------------------------------
-        // Case 2: Complex eigenvalue block (2x2 pair)
-        // ---------------------------------------------------------
         else {
+            // --- COMPLEX CONJUGATE PAIR (2x2 Block) ---
             cur_m = is_diag ? nb - 2 - k : m_size;
             row_offset = is_diag ? k + 2 : 0;
 
@@ -1225,7 +1221,7 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
     // Dynamic block size fallback. If the provided memory is insufficient
     // for bsize = 32, shrink the block size to fit the constraints.
     if (lwork != -1 && lwork < req_lwork) {
-        for (bsize = 63; bsize >= 1; bsize--) {
+        for (bsize = bsize - 1; bsize >= 1; bsize--) {
             req_lwork = 2 * n * (bsize + 1) + 4 * (bsize + 1) * (bsize + 1) + 2 * (bsize + 1);
             if (lwork >= req_lwork) {
                 break;
@@ -1286,7 +1282,10 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
         current_out_col = num_sel;
         curr_col = n;
 
+        // Outer Loop: Process panels in REVERSE (right-to-left)
         while (curr_col > 0) {
+
+            // 1. Dynamically compute the start index (i) for the current panel
             i = idlapb(S, lds, curr_col, bsize);
             nb = curr_col - i;
             ld_x = curr_col;
@@ -1338,16 +1337,21 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                 }
             }
 
-            // Iterate sequentially backward up the matrix to resolve components
+            // Inner Loop: Row blocks (Bottom-up back-substitution)
             curr_row = curr_col;
             while (curr_row > 0) {
+
+                // 2. Step backwards safely to find the top of the current row block
                 j = idlapb(S, lds, curr_row, bsize);
                 j_nb = curr_row - j;
+
+                // The diagonal block occurs exactly when we are at the bottom of the panel
                 is_diag = (curr_row == curr_col) ? 1 : 0;
 
-                // Obtain the local piece of the eigenvector matrix
+                // Extract views and perform Local solve
                 dlalsr(lds, &S[j + j * lds], ldp, &P[j + j * ldp], j_nb, ld_x, &X_panel[j], X_panel, ld_x, nb, alphar + i, alphai + i, beta + i, is_diag, work_local, ascale, bscale, safemin, bignum, col_map, nb_sel);
 
+                // 3. Level 3 Update for all rows strictly above the current block
                 if (j > 0) {
                     TempS = work_local;
                     TempP = work_local + j_nb * nb_sel;
@@ -1428,9 +1432,12 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                     dgemm_("N", "N", &j, &nb_sel, &j_nb, &alpha_m1, &S[0 + j * lds], &lds, TempS, &j_nb, &beta_1, &X_panel[0], &ld_x);
                     dgemm_("N", "N", &j, &nb_sel, &j_nb, &alpha_1, &P[0 + j * ldp], &ldp, TempP, &j_nb, &beta_1, &X_panel[0], &ld_x);
                 }
+
+                // Move up to the next row block
                 curr_row = j;
             }
 
+            // 4. Transform and write-back newly computed columns
             // Copy results back to the VR matrix.
             // If do_back is true, the vectors require backtransformation via matrix multiplication.
             if (do_back) {
@@ -1456,6 +1463,8 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                     }
                 }
             }
+
+            // Shift the panel boundary leftwards for the next outer iteration
             curr_col = i;
         }
     }
@@ -1468,7 +1477,10 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
         current_out_col = 0;
         curr_col = 0;
 
+        // Outer Loop: Process panels FORWARD (left-to-right)
         while (curr_col < n) {
+
+            // 1. Dynamically compute the end index (i_next) for the current panel
             i_next = idlanb(S, n, lds, curr_col, bsize);
             nb = i_next - curr_col;
             i = curr_col;
@@ -1520,16 +1532,19 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                 }
             }
 
-            // Process forward down the matrix representations
+            // Inner Loop: Row blocks (Top-down forward-substitution)
             curr_row = i;
             while (curr_row < n) {
+
+                // 2. Step forwards safely to find the bottom of the current row block
                 j_next = idlanb(S, n, lds, curr_row, bsize);
                 j_nb = j_next - curr_row;
                 is_diag = (curr_row == i) ? 1 : 0;
 
-                // Obtain the local piece of the left eigenvector matrix
+                // Extract views and perform Local solve
                 dlalsl(lds, &S[curr_row + curr_row * lds], ldp, &P[curr_row + curr_row * ldp], j_nb, ld_x, &X_panel[curr_row - i], X_panel, ld_x, nb, alphar + i, alphai + i, beta + i, is_diag, work_local, ascale, bscale, safemin, bignum, col_map, nb_sel);
 
+                // 3. Level 3 Update for all rows strictly below the current block
                 if (j_next < n) {
                     TempS = work_local;
                     TempP = work_local + j_nb * nb_sel;
@@ -1609,9 +1624,12 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                     dgemm_("T", "N", &rem, &nb_sel, &j_nb, &alpha_m1, &S[curr_row + j_next * lds], &lds, TempS, &j_nb, &beta_1, &X_panel[j_next - i], &ld_x);
                     dgemm_("T", "N", &rem, &nb_sel, &j_nb, &alpha_1, &P[curr_row + j_next * ldp], &ldp, TempP, &j_nb, &beta_1, &X_panel[j_next - i], &ld_x);
                 }
+
+                // Move down to the next row block
                 curr_row = j_next;
             }
 
+            // 4. Transform and write-back newly computed columns
             // Transfer result back to the user matrix VL. Apply base transformation
             // via dgemm if computing original coordinates (howmny = 'B')
             if (do_back) {
@@ -1638,6 +1656,8 @@ void dtgevc3(char side, char howmny, const int *select, int n, const double *S, 
                 }
             }
             current_out_col += nb_sel;
+
+            // Shift the panel boundary rightwards for the next outer iteration
             curr_col = i_next;
         }
     }

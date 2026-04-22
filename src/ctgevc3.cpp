@@ -180,7 +180,7 @@ void clalsr(int ldS, const std::complex<float> *S, int ldP, const std::complex<f
                 }
             }
 
-            // --- OVERFLOW GUARD: Pre-Local Solve ---
+            // Check for potential overflow in the local linear system solver.
             rhs_max = 0.0f;
             for (r = 0; r < cur_m; r++) {
                 rhs_max = std::max(rhs_max, std::abs(work_rhs[r].real()) + std::abs(work_rhs[r].imag()));
@@ -328,7 +328,8 @@ void clalsl(int ldS, const std::complex<float> *S, int ldP, const std::complex<f
                 }
             }
 
-            // --- OVERFLOW GUARD: Pre-Local Solve ---
+            // Assess the RHS magnitude and scale proportionally if the
+            // solution risks numeric overflow.
             rhs_max = 0.0f;
             for (r = 0; r < cur_m; r++) {
                 rhs_max = std::max(rhs_max, std::abs(work_rhs[r].real()) + std::abs(work_rhs[r].imag()));
@@ -434,7 +435,7 @@ void clalsl(int ldS, const std::complex<float> *S, int ldP, const std::complex<f
 void ctgevc3(char side, char howmny, const int *select, int n, const std::complex<float> *S, int lds, const std::complex<float> *P, int ldp, const std::complex<float> *alpha, const std::complex<float> *beta, std::complex<float> *VL, int ldvl, std::complex<float> *VR, int ldvr, int mm, int *m, std::complex<float> *work, int lwork, int *info)
 {
     bool compute_right, compute_left, do_all, do_back, do_sel;
-    int num_sel, k_idx, bsize, req_lwork;
+    int num_sel, k_idx, req_lwork;
     float safemin, eps, smlnum, bignum;
     float anorm, bnorm, sum_s, sum_p;
     int col, row;
@@ -449,6 +450,8 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
     float t, update_max, safe_limit, scale;
     int total_elements, idx, c_idx, r_idx;
     int i_next, rem_rows, j_next, rem;
+
+    int bsize = 32; // Default ideal block size for Level 3 BLAS optimization
 
     // Decode and validate parameters
     compute_right = (side == 'R' || side == 'B');
@@ -486,13 +489,13 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
         return;
     }
 
-    bsize = 32; // Default ideal block size for Level 3 BLAS optimization
+    // Determine required workspace size
     req_lwork = 2 * n * (bsize + 1) + 4 * (bsize + 1) * (bsize + 1) + 2 * (bsize + 1);
 
     // Dynamic block size fallback. If the provided memory is insufficient
     // for bsize = 32, shrink the block size to fit the constraints.
     if (lwork != -1 && lwork < req_lwork) {
-        for (bsize = 63; bsize >= 1; bsize--) {
+        for (bsize = bsize - 1; bsize >= 1; bsize--) {
             req_lwork = 2 * n * (bsize + 1) + 4 * (bsize + 1) * (bsize + 1) + 2 * (bsize + 1);
             if (lwork >= req_lwork) {
                 break;
@@ -558,7 +561,9 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
         current_out_col = num_sel;
         curr_col = n;
 
+        // Outer Loop: Process panels in REVERSE (right-to-left)
         while (curr_col > 0) {
+            // 1. Dynamically compute the start index (i) for the current panel
             i = iclapb(curr_col, bsize);
             nb = curr_col - i;
             ld_x = curr_col;
@@ -587,16 +592,20 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
                 }
             }
 
-            // Iterate sequentially backward up the matrix to resolve components
+            // Inner Loop: Row blocks (Bottom-up back-substitution)
             curr_row = curr_col;
             while (curr_row > 0) {
+                // 2. Step backwards safely to find the top of the current row block
                 j = iclapb(curr_row, bsize);
                 j_nb = curr_row - j;
+
+                // The diagonal block occurs exactly when we are at the bottom of the panel
                 is_diag = (curr_row == curr_col) ? 1 : 0;
 
-                // Obtain the local piece of the eigenvector matrix
+                // Extract views and perform Local solve
                 clalsr(lds, &S[j + j * lds], ldp, &P[j + j * ldp], j_nb, ld_x, &X_panel[j], X_panel, ld_x, nb, alpha + i, beta + i, is_diag, work_local, ascale, bscale, safemin, bignum, col_map, nb_sel);
 
+                // 3. Level 3 Update for all rows strictly above the current block
                 if (j > 0) {
                     TempS = work_local;
                     TempP = work_local + j_nb * nb_sel;
@@ -636,6 +645,8 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
                     }
 
                     safe_limit = bignum / static_cast<float>(std::max(1, nb_sel));
+
+                    // Scale proportionately down to prevent calculation explosions
                     if (update_max > safe_limit) {
                         scale = safe_limit / update_max;
                         for (idx = 0; idx < total_elements; ++idx) {
@@ -653,9 +664,12 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
                     cgemm_("N", "N", &j, &nb_sel, &j_nb, &alpha_m1, &S[0 + j * lds], &lds, TempS, &j_nb, &beta_1, &X_panel[0], &ld_x);
                     cgemm_("N", "N", &j, &nb_sel, &j_nb, &alpha_1, &P[0 + j * ldp], &ldp, TempP, &j_nb, &beta_1, &X_panel[0], &ld_x);
                 }
+
+                // Move up to the next row block
                 curr_row = j;
             }
 
+            // 4. Transform and write-back newly computed columns
             // Copy results back to the VR matrix.
             // If do_back is true, the vectors require backtransformation via matrix multiplication.
             if (do_back) {
@@ -678,6 +692,8 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
                     }
                 }
             }
+
+            // Shift the panel boundary leftwards for the next outer iteration
             curr_col = i;
         }
     }
@@ -690,7 +706,9 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
         current_out_col = 0;
         curr_col = 0;
 
+        // Outer Loop: Process panels FORWARD (left-to-right)
         while (curr_col < n) {
+            // 1. Dynamically compute the end index (i_next) for the current panel
             i_next = iclanb(n, curr_col, bsize);
             nb = i_next - curr_col;
             i = curr_col;
@@ -720,16 +738,18 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
                 }
             }
 
-            // Process forward down the matrix representations
+            // Inner Loop: Row blocks (Top-down forward-substitution)
             curr_row = i;
             while (curr_row < n) {
+                // 2. Step forwards safely to find the bottom of the current row block
                 j_next = iclanb(n, curr_row, bsize);
                 j_nb = j_next - curr_row;
                 is_diag = (curr_row == i) ? 1 : 0;
 
-                // Obtain the local piece of the left eigenvector matrix
+                // Extract views and perform Local solve
                 clalsl(lds, &S[curr_row + curr_row * lds], ldp, &P[curr_row + curr_row * ldp], j_nb, ld_x, &X_panel[curr_row - i], X_panel, ld_x, nb, alpha + i, beta + i, is_diag, work_local, ascale, bscale, safemin, bignum, col_map, nb_sel);
 
+                // 3. Level 3 Update for all rows strictly below the current block
                 if (j_next < n) {
                     TempS = work_local;
                     TempP = work_local + j_nb * nb_sel;
@@ -769,6 +789,8 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
                     }
 
                     safe_limit = bignum / static_cast<float>(std::max(1, nb_sel));
+
+                    // Scale proportionately down to prevent calculation explosions
                     if (update_max > safe_limit) {
                         scale = safe_limit / update_max;
                         for (idx = 0; idx < total_elements; ++idx) {
@@ -786,9 +808,12 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
                     cgemm_("C", "N", &rem, &nb_sel, &j_nb, &alpha_m1, &S[curr_row + j_next * lds], &lds, TempS, &j_nb, &beta_1, &X_panel[j_next - i], &ld_x);
                     cgemm_("C", "N", &rem, &nb_sel, &j_nb, &alpha_1, &P[curr_row + j_next * ldp], &ldp, TempP, &j_nb, &beta_1, &X_panel[j_next - i], &ld_x);
                 }
+
+                // Move down to the next row block
                 curr_row = j_next;
             }
 
+            // 4. Transform and write-back newly computed columns
             // Transfer result back to the user matrix VL. Apply base transformation
             // via cgemm if computing original coordinates (howmny = 'B')
             if (do_back) {
@@ -812,6 +837,8 @@ void ctgevc3(char side, char howmny, const int *select, int n, const std::comple
                 }
             }
             current_out_col += nb_sel;
+
+            // Shift the panel boundary rightwards for the next outer iteration
             curr_col = i_next;
         }
     }
