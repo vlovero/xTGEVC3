@@ -1,10 +1,14 @@
 #include <algorithm>
 #include <benchmark/benchmark.h>
+#include <chrono>
 #include <complex>
 #include <random>
+#include <thread>
 #include <vector>
 
 #include "tgevc3.h"
+
+constexpr int sizes[] = { 500, 707, 1000, 1414, 2000, 2828, 4000, 5657, 8000 };
 
 extern "C" {
     void ctgevc_(const char *side, const char *howmny, const int *select, const int *n, const std::complex<float> *s, const int *lds, const std::complex<float> *p, const int *ldp, std::complex<float> *vl, const int *ldvl, std::complex<float> *vr, const int *ldvr, const int *mm, int *m, std::complex<float> *work, float *rwork, int *info);
@@ -14,14 +18,34 @@ extern "C" {
     void ctrevc3_(const char *side, const char *howmny, const int *select, const int *n, const std::complex<float> *t, const int *ldt, std::complex<float> *vl, const int *ldvl, std::complex<float> *vr, const int *ldvr, const int *mm, int *m, std::complex<float> *work, const int *lwork, float *rwork, const int *lrwork, int *info);
 }
 
+static std::vector<std::complex<float>> eye(const ptrdiff_t n)
+{
+    std::vector<std::complex<float>> I(n * n);
+    for (ptrdiff_t i = 0; i < n; i++) {
+        for (ptrdiff_t j = 0; j < n; j++) {
+            I[i * n + j] = (i == j) ? std::complex<float>(1.0f, 0.0f) : std::complex<float>(0.0f, 0.0f);
+        }
+    }
+    return I;
+}
+
+static void cool_down(const benchmark::State &state)
+{
+    // Only sleep if the current run used the last size in the array (8000)
+    if (state.range(0) == sizes[std::size(sizes) - 1]) {
+        std::this_thread::sleep_for(std::chrono::seconds(60));
+    }
+}
+
 static void apply_args(benchmark::internal::Benchmark *b)
 {
-    constexpr int sizes[] = { 500, 707, 1000, 1414, 2000, 2828, 4000, 5657, 8000 };
     for (const auto size : sizes) {
         b->Args({ size });
     }
     b->MinTime(2.0);
     b->Unit(benchmark::kMillisecond);
+    b->Complexity();
+    b->Teardown(cool_down);
 }
 
 // Data generator for Generalized Eigenvalue Problem
@@ -67,13 +91,14 @@ static void generate_standard_complex_triangular(int n, std::vector<std::complex
 static void BM_ctgevc(benchmark::State &state)
 {
     int n = state.range(0);
-    char side = 'B', howmny = 'A';
+    char side = 'B', howmny = 'B';
+    double total_flops = 4.0 * ((8.0 * n * n * n / 3.0) + (3 * n * n) - (11.0 * n / 3.0));
 
     std::vector<std::complex<float>> S(n * n), P(n * n);
     std::vector<std::complex<float>> alpha(n), beta(n);
     generate_generalized_complex_triangular(n, S, P, alpha, beta);
 
-    std::vector<std::complex<float>> VL(n * n, { 0.0f, 0.0f }), VR(n * n, { 0.0f, 0.0f });
+    std::vector<std::complex<float>> VL{ eye(n) }, VR{ eye(n) };
     std::vector<std::complex<float>> work(std::max(1, 2 * n), { 0.0f, 0.0f });
     std::vector<float> rwork(std::max(1, 2 * n), 0.0f);
     int m_out = 0, info = 0;
@@ -81,18 +106,22 @@ static void BM_ctgevc(benchmark::State &state)
     for (auto _ : state) {
         ctgevc_(&side, &howmny, nullptr, &n, S.data(), &n, P.data(), &n, VL.data(), &n, VR.data(), &n, &n, &m_out, work.data(), rwork.data(), &info);
     }
+
+    state.SetComplexityN(n);
+    state.counters["FLOPS"] = benchmark::Counter(static_cast<double>(state.iterations()) * total_flops, benchmark::Counter::kIsRate);
 }
 
 static void BM_ctgevc3(benchmark::State &state)
 {
     int n = state.range(0);
-    char side = 'B', howmny = 'A';
+    char side = 'B', howmny = 'B';
+    double total_flops = 4.0 * ((8.0 * n * n * n / 3.0) + (3 * n * n) - (11.0 * n / 3.0));
 
     std::vector<std::complex<float>> S(n * n), P(n * n);
     std::vector<std::complex<float>> alpha(n), beta(n);
     generate_generalized_complex_triangular(n, S, P, alpha, beta);
 
-    std::vector<std::complex<float>> VL(n * n, { 0.0f, 0.0f }), VR(n * n, { 0.0f, 0.0f });
+    std::vector<std::complex<float>> VL{ eye(n) }, VR{ eye(n) };
     int m_out = 0, info = 0;
 
     std::complex<float> dummy_work;
@@ -104,6 +133,9 @@ static void BM_ctgevc3(benchmark::State &state)
     for (auto _ : state) {
         ctgevc3(side, howmny, nullptr, n, S.data(), n, P.data(), n, alpha.data(), beta.data(), VL.data(), n, VR.data(), n, n, &m_out, work.data(), lwork, &info);
     }
+
+    state.SetComplexityN(n);
+    state.counters["FLOPS"] = benchmark::Counter(static_cast<double>(state.iterations()) * total_flops, benchmark::Counter::kIsRate);
 }
 
 // --- Standard Eigenvalue Problem Benchmarks ---
@@ -111,12 +143,13 @@ static void BM_ctgevc3(benchmark::State &state)
 static void BM_ctrevc(benchmark::State &state)
 {
     int n = state.range(0);
-    char side = 'B', howmny = 'A';
+    char side = 'B', howmny = 'B';
+    double total_flops = 4.0 * ((5.0 * n * n * n / 3.0) + (n * n) - (2.0 * n / 3.0));
 
     std::vector<std::complex<float>> T(n * n);
     generate_standard_complex_triangular(n, T);
 
-    std::vector<std::complex<float>> VL(n * n, { 0.0f, 0.0f }), VR(n * n, { 0.0f, 0.0f });
+    std::vector<std::complex<float>> VL{ eye(n) }, VR{ eye(n) };
     std::vector<std::complex<float>> work(std::max(1, 2 * n), { 0.0f, 0.0f });
     std::vector<float> rwork(std::max(1, n), 0.0f);
     int m_out = 0, info = 0;
@@ -124,17 +157,21 @@ static void BM_ctrevc(benchmark::State &state)
     for (auto _ : state) {
         ctrevc_(&side, &howmny, nullptr, &n, T.data(), &n, VL.data(), &n, VR.data(), &n, &n, &m_out, work.data(), rwork.data(), &info);
     }
+
+    state.SetComplexityN(n);
+    state.counters["FLOPS"] = benchmark::Counter(static_cast<double>(state.iterations()) * total_flops, benchmark::Counter::kIsRate);
 }
 
 static void BM_ctrevc3(benchmark::State &state)
 {
     int n = state.range(0);
-    char side = 'B', howmny = 'A';
+    char side = 'B', howmny = 'B';
+    double total_flops = 4.0 * ((5.0 * n * n * n / 3.0) + (n * n) - (2.0 * n / 3.0));
 
     std::vector<std::complex<float>> T(n * n);
     generate_standard_complex_triangular(n, T);
 
-    std::vector<std::complex<float>> VL(n * n, { 0.0f, 0.0f }), VR(n * n, { 0.0f, 0.0f });
+    std::vector<std::complex<float>> VL{ eye(n) }, VR{ eye(n) };
     int m_out = 0, info = 0;
 
     int lwork_query = -1;
@@ -152,6 +189,9 @@ static void BM_ctrevc3(benchmark::State &state)
     for (auto _ : state) {
         ctrevc3_(&side, &howmny, nullptr, &n, T.data(), &n, VL.data(), &n, VR.data(), &n, &n, &m_out, work.data(), &lwork, rwork.data(), &lrwork, &info);
     }
+
+    state.SetComplexityN(n);
+    state.counters["FLOPS"] = benchmark::Counter(static_cast<double>(state.iterations()) * total_flops, benchmark::Counter::kIsRate);
 }
 
 BENCHMARK(BM_ctgevc)->Apply(apply_args);
