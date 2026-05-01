@@ -1,6 +1,6 @@
 # Bumped minimum version to 3.12 to natively support <PackageName>_ROOT variables
 cmake_minimum_required(VERSION 3.12)
-project(xgtevc3 VERSION 0.1.0 LANGUAGES C CXX)
+project(xtgevc3 VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -31,18 +31,18 @@ add_subdirectory(fortran)
 # ==============================================================================
 file(GLOB LIB_SOURCES "src/*.cpp" "src/*.c" "src/*.f")
 
-add_library(xgtevc3 STATIC ${LIB_SOURCES})
+add_library(xtgevc3 STATIC ${LIB_SOURCES})
 
-target_include_directories(xgtevc3 PUBLIC 
+target_include_directories(xtgevc3 PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 # Use the variables provided by FindBLAS 
-target_link_libraries(xgtevc3 PUBLIC ${BLAS_LIBRARIES})
+target_link_libraries(xtgevc3 PUBLIC ${BLAS_LIBRARIES})
 
-target_link_directories(xgtevc3 PUBLIC ${CMAKE_Fortran_IMPLICIT_LINK_DIRECTORIES})
-target_link_libraries(xgtevc3 PUBLIC ${CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES})
+target_link_directories(xtgevc3 PUBLIC ${CMAKE_Fortran_IMPLICIT_LINK_DIRECTORIES})
+target_link_libraries(xtgevc3 PUBLIC ${CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES})
 
 # ==============================================================================
 # 3. Create Test Executables
@@ -57,7 +57,7 @@ foreach(TEST_SRC ${TEST_SOURCES})
     add_executable(${TEST_NAME} ${TEST_SRC}) 
     
     # Modern CMake targets handle include directories automatically
-    target_link_libraries(${TEST_NAME} PRIVATE xgtevc3 fmt::fmt)
+    target_link_libraries(${TEST_NAME} PRIVATE xtgevc3 fmt::fmt)
     
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME}) 
     list(APPEND TEST_TARGETS ${TEST_NAME}) 
@@ -76,7 +76,7 @@ foreach(BENCH_SRC ${BENCHMARK_SOURCES})
     
     # Target linkage automatically applies include paths and definitions
     target_link_libraries(${BENCH_NAME} PRIVATE 
-        xgtevc3 
+        xtgevc3 
         fmt::fmt 
         benchmark::benchmark
         Threads::Threads
@@ -91,8 +91,8 @@ endforeach()
 # ==============================================================================
 
 # Install the library binary and headers
-install(TARGETS xgtevc3
-    EXPORT xgtevc3Targets
+install(TARGETS xtgevc3
+    EXPORT xtgevc3Targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} 
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} 
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} 
