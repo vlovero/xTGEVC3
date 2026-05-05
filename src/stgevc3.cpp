@@ -125,7 +125,7 @@ inline int islanb(const float *S, int n, int lds, int curr, int bsize)
 int slauhs(int n, int nrhs, float *A, int lda, float *B, int ldb)
 {
     int j, k, pivot_row;
-    float mult, alpha;
+    float mult, alpha, eps, safemin, local_max, perturb;
     char side = 'L', uplo = 'U', transa = 'N', diag = 'N';
 
     if (n < 0) {
@@ -144,6 +144,18 @@ int slauhs(int n, int nrhs, float *A, int lda, float *B, int ldb)
         return 0;
     }
 
+    eps = std::numeric_limits<float>::epsilon();
+    safemin = std::numeric_limits<float>::min();
+    local_max = 0.0f;
+
+    // Quick local infinity norm estimate
+    for (j = 0; j < n; j++) {
+        for (k = j; k < std::min(n, j + 2); k++) {
+            local_max = std::max(local_max, std::abs(A[k + j * lda]));
+        }
+    }
+    perturb = std::max(safemin, eps * local_max);
+
     // 1. Forward Elimination (Column-oriented traversal)
     for (j = 0; j < n - 1; j++) {
 
@@ -152,11 +164,6 @@ int slauhs(int n, int nrhs, float *A, int lda, float *B, int ldb)
         pivot_row = j;
         if (std::abs(A[(j + 1) + j * lda]) > std::abs(A[j + j * lda])) {
             pivot_row = j + 1;
-        }
-
-        // Return early if the exact zero pivot indicates a singular matrix
-        if (A[pivot_row + j * lda] == 0.0f) {
-            return j + 1;
         }
 
         // --- Row Swap ---
@@ -168,6 +175,11 @@ int slauhs(int n, int nrhs, float *A, int lda, float *B, int ldb)
             for (k = 0; k < nrhs; k++) {
                 std::swap(B[j + k * ldb], B[pivot_row + k * ldb]);
             }
+        }
+
+        // --- Zero Pivot Perturbation ---
+        if (std::abs(A[j + j * lda]) < perturb) {
+            A[j + j * lda] = (A[j + j * lda] < 0.0f) ? -perturb : perturb;
         }
 
         // --- Row Elimination ---
@@ -184,9 +196,9 @@ int slauhs(int n, int nrhs, float *A, int lda, float *B, int ldb)
         }
     }
 
-    // Check the final diagonal element for singularity
-    if (A[(n - 1) + (n - 1) * lda] == 0.0f) {
-        return n;
+    // Check the final diagonal element and perturb if singular
+    if (std::abs(A[(n - 1) + (n - 1) * lda]) < perturb) {
+        A[(n - 1) + (n - 1) * lda] = (A[(n - 1) + (n - 1) * lda] < 0.0f) ? -perturb : perturb;
     }
 
     // 2. Back-substitution (Solve Upper Triangular System)
@@ -239,6 +251,7 @@ int slau2s(int n, int nrhs, float *A, int lda, float *B, int ldb)
     int j, k, pivot_row;
     float max_val, mult1, mult2, alpha;
     char side = 'L', uplo = 'U', transa = 'N', diag = 'N';
+    float eps, safemin, local_max, perturb;
 
     if (n < 0) {
         return -1;
@@ -255,6 +268,18 @@ int slau2s(int n, int nrhs, float *A, int lda, float *B, int ldb)
     if (n == 0) {
         return 0;
     }
+
+    // --- Calculate Safe Perturbation Bound ---
+    eps = std::numeric_limits<float>::epsilon();
+    safemin = std::numeric_limits<float>::min();
+    local_max = 0.0f;
+
+    for (j = 0; j < n; j++) {
+        for (k = 0; k < std::min(j + 3, n); k++) {
+            local_max = std::max(local_max, std::abs(A[k + j * lda]));
+        }
+    }
+    perturb = std::max(safemin, eps * local_max);
 
     // 1. Forward Elimination (Column-oriented traversal over 2 subdiagonals)
     for (j = 0; j < n - 1; j++) {
@@ -273,10 +298,6 @@ int slau2s(int n, int nrhs, float *A, int lda, float *B, int ldb)
             pivot_row = j + 2;
         }
 
-        if (max_val == 0.0f) {
-            return j + 1;
-        }
-
         // --- Row Swap ---
         // Swap the selected pivot row into the current row position
         if (pivot_row != j) {
@@ -286,6 +307,11 @@ int slau2s(int n, int nrhs, float *A, int lda, float *B, int ldb)
             for (k = 0; k < nrhs; k++) {
                 std::swap(B[j + k * ldb], B[pivot_row + k * ldb]);
             }
+        }
+
+        // --- Zero Pivot Perturbation ---
+        if (std::abs(A[j + j * lda]) < perturb) {
+            A[j + j * lda] = (A[j + j * lda] < 0.0f) ? -perturb : perturb;
         }
 
         // --- Row Elimination ---
@@ -313,8 +339,8 @@ int slau2s(int n, int nrhs, float *A, int lda, float *B, int ldb)
         }
     }
 
-    if (A[(n - 1) + (n - 1) * lda] == 0.0f) {
-        return n;
+    if (std::abs(A[(n - 1) + (n - 1) * lda]) < perturb) {
+        A[(n - 1) + (n - 1) * lda] = (A[(n - 1) + (n - 1) * lda] < 0.0f) ? -perturb : perturb;
     }
 
     // 2. Back-substitution (Solve Upper Triangular System)
@@ -369,6 +395,23 @@ int slalhs(int n, int nrhs, float *A, int lda, int *jpiv, float *B, int ldb)
     int k, p, i, c;
     float max_val, pivot, m, alpha;
     char side = 'L', uplo = 'L', transa = 'N', diag = 'N';
+    float eps, safemin, local_max, perturb;
+
+    if (n == 0) {
+        return 0;
+    }
+
+    // --- Calculate Safe Perturbation Bound ---
+    eps = std::numeric_limits<float>::epsilon();
+    safemin = std::numeric_limits<float>::min();
+    local_max = 0.0f;
+
+    for (i = 0; i < n; i++) {
+        for (k = std::max(0, i - 2); k < n; k++) {
+            local_max = std::max(local_max, std::abs(A[k + i * lda]));
+        }
+    }
+    perturb = std::max(safemin, eps * local_max);
 
     // 1. Forward Elimination (Process the single superdiagonal)
     for (k = 0; k < n - 1; k++) {
@@ -391,9 +434,11 @@ int slalhs(int n, int nrhs, float *A, int lda, int *jpiv, float *B, int ldb)
             }
         }
 
+        // --- Zero Pivot Perturbation ---
         pivot = A[k + k * lda];
-        if (pivot == 0.0f) {
-            return k + 1;
+        if (std::abs(pivot) < perturb) {
+            pivot = (pivot < 0.0f) ? -perturb : perturb;
+            A[k + k * lda] = pivot;
         }
 
         // --- Row Elimination ---
@@ -405,9 +450,15 @@ int slalhs(int n, int nrhs, float *A, int lda, int *jpiv, float *B, int ldb)
         }
     }
 
+    if (std::abs(A[(n - 1) + (n - 1) * lda]) < perturb) {
+        A[(n - 1) + (n - 1) * lda] = (A[(n - 1) + (n - 1) * lda] < 0.0f) ? -perturb : perturb;
+    }
+
     // 2. Forward-substitution (Solve Lower Triangular System A * X = B)
-    alpha = 1.0f;
-    strsm_(&side, &uplo, &transa, &diag, &n, &nrhs, &alpha, A, &lda, B, &ldb);
+    if (nrhs > 0) {
+        alpha = 1.0f;
+        strsm_(&side, &uplo, &transa, &diag, &n, &nrhs, &alpha, A, &lda, B, &ldb);
+    }
 
     // 3. Backward permutation update: Apply pivoting history to solution
     for (k = n - 2; k >= 0; --k) {
@@ -466,6 +517,23 @@ int slal2s(int n, int nrhs, float *A, int lda, int *jpiv, float *B, int ldb)
     int k, p, i, c;
     float max_val, pivot, m1, m2, alpha;
     char side = 'L', uplo = 'L', transa = 'N', diag = 'N';
+    float eps, safemin, local_max, perturb;
+
+    if (n == 0) {
+        return 0;
+    }
+
+    // --- Calculate Safe Perturbation Bound ---
+    eps = std::numeric_limits<float>::epsilon();
+    safemin = std::numeric_limits<float>::min();
+    local_max = 0.0f;
+
+    for (i = 0; i < n; i++) {
+        for (k = std::max(0, i - 3); k < n; k++) {
+            local_max = std::max(local_max, std::abs(A[k + i * lda]));
+        }
+    }
+    perturb = std::max(safemin, eps * local_max);
 
     // 1. Forward Elimination (Process both superdiagonals)
     for (k = 0; k < n - 1; k++) {
@@ -491,9 +559,11 @@ int slal2s(int n, int nrhs, float *A, int lda, int *jpiv, float *B, int ldb)
             }
         }
 
+        // --- Zero Pivot Perturbation ---
         pivot = A[k + k * lda];
-        if (pivot == 0.0f) {
-            return k + 1;
+        if (std::abs(pivot) < perturb) {
+            pivot = (pivot < 0.0f) ? -perturb : perturb;
+            A[k + k * lda] = pivot;
         }
 
         // --- Row Elimination ---
@@ -513,9 +583,15 @@ int slal2s(int n, int nrhs, float *A, int lda, int *jpiv, float *B, int ldb)
         }
     }
 
+    if (std::abs(A[(n - 1) + (n - 1) * lda]) < perturb) {
+        A[(n - 1) + (n - 1) * lda] = (A[(n - 1) + (n - 1) * lda] < 0.0f) ? -perturb : perturb;
+    }
+
     // 2. Forward-substitution (Solve Lower Triangular System)
-    alpha = 1.0f;
-    strsm_(&side, &uplo, &transa, &diag, &n, &nrhs, &alpha, A, &lda, B, &ldb);
+    if (nrhs > 0) {
+        alpha = 1.0f;
+        strsm_(&side, &uplo, &transa, &diag, &n, &nrhs, &alpha, A, &lda, B, &ldb);
+    }
 
     // 3. Backward permutation update
     for (k = n - 2; k >= 0; --k) {
@@ -1133,7 +1209,7 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
     int col, row, row_limit;
     float ascale, bscale;
     float t, acoeff, bcoeffR, bcoeffI;
-    float update_max, safe_limit, scale;
+    float update_max, safe_limit, scale, xmax;
     int total_elements, idx, c_idx, r_idx;
 
     int bsize = 32; // Default ideal block size for Level 3 BLAS optimization
@@ -1436,6 +1512,55 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
                 }
             }
 
+            // 5. scale eigenvectors
+            for (c = 0; c < nb;) {
+                c_packed = col_map[c];
+
+                // Skip non-selected eigenvalues
+                if (c_packed < 0) {
+                    c += (alphai[i + c] == 0.0f ? 1 : 2);
+                    continue;
+                }
+
+                out_col = current_out_col + c_packed;
+
+                if (alphai[i + c] == 0.0f) {
+                    // --- Real Eigenvector Scaling ---
+                    // Find max magnitude component (infinity norm)
+                    xmax = 0.0f;
+                    for (r = 0; r < n; r++) {
+                        xmax = std::max(xmax, std::abs(VR[r + out_col * ldvr]));
+                    }
+
+                    // Scale vector to make max component 1.0
+                    if (xmax > safemin) {
+                        xmax = 1.0f / xmax;
+                        for (r = 0; r < n; r++) {
+                            VR[r + out_col * ldvr] *= xmax;
+                        }
+                    }
+                    c += 1;
+                }
+                else {
+                    // --- Complex Conjugate Pair Scaling ---
+                    // Find max magnitude component (1-norm of real + imag parts)
+                    xmax = 0.0f;
+                    for (r = 0; r < n; r++) {
+                        xmax = std::max(xmax, std::abs(VR[r + out_col * ldvr]) + std::abs(VR[r + (out_col + 1) * ldvr]));
+                    }
+
+                    // Scale both components of the vector pair
+                    if (xmax > safemin) {
+                        xmax = 1.0f / xmax;
+                        for (r = 0; r < n; r++) {
+                            VR[r + out_col * ldvr] *= xmax;
+                            VR[r + (out_col + 1) * ldvr] *= xmax;
+                        }
+                    }
+                    c += 2;
+                }
+            }
+
             // Shift the panel boundary leftwards for the next outer iteration
             curr_col = i;
         }
@@ -1601,6 +1726,7 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
                 curr_row = j_next;
             }
 
+
             // 4. Transform and write-back newly computed columns
             // Transfer result back to the user matrix VL. Apply base transformation
             // via sgemm if computing original coordinates (howmny = 'B')
@@ -1627,6 +1753,56 @@ void stgevc3(char side, char howmny, const int *select, int n, const float *S, i
                     }
                 }
             }
+
+            // 5. scale eigenvectors
+            for (c = 0; c < nb;) {
+                c_packed = col_map[c];
+
+                // Skip non-selected eigenvalues
+                if (c_packed < 0) {
+                    c += (alphai[i + c] == 0.0f ? 1 : 2);
+                    continue;
+                }
+
+                out_col = current_out_col + c_packed;
+
+                if (alphai[i + c] == 0.0f) {
+                    // --- Real Eigenvector Scaling ---
+                    // Find max magnitude component (infinity norm)
+                    xmax = 0.0f;
+                    for (r = 0; r < n; r++) {
+                        xmax = std::max(xmax, std::abs(VL[r + out_col * ldvl]));
+                    }
+
+                    // Scale vector to make max component 1.0
+                    if (xmax > safemin) {
+                        xmax = 1.0f / xmax;
+                        for (r = 0; r < n; r++) {
+                            VL[r + out_col * ldvl] *= xmax;
+                        }
+                    }
+                    c += 1;
+                }
+                else {
+                    // --- Complex Conjugate Pair Scaling ---
+                    // Find max magnitude component (1-norm of real + imag parts)
+                    xmax = 0.0f;
+                    for (r = 0; r < n; r++) {
+                        xmax = std::max(xmax, std::abs(VL[r + out_col * ldvl]) + std::abs(VL[r + (out_col + 1) * ldvl]));
+                    }
+
+                    // Scale both components of the vector pair
+                    if (xmax > safemin) {
+                        xmax = 1.0f / xmax;
+                        for (r = 0; r < n; r++) {
+                            VL[r + out_col * ldvl] *= xmax;
+                            VL[r + (out_col + 1) * ldvl] *= xmax;
+                        }
+                    }
+                    c += 2;
+                }
+            }
+
             current_out_col += nb_sel;
 
             // Shift the panel boundary rightwards for the next outer iteration

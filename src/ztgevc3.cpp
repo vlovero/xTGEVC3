@@ -199,6 +199,25 @@ void zlalsr(int ldS, const std::complex<double> *S, int ldP, const std::complex<
                 }
             }
 
+            // Perturbation check for local 1x1 or mxm generalized block
+            double eps = std::numeric_limits<double>::epsilon();
+            double local_max = 0.0;
+            for (int c_idx = 0; c_idx < cur_m; c_idx++) {
+                for (int r_idx = 0; r_idx <= c_idx; r_idx++) {
+                    local_max = std::max(local_max, std::abs(work[r_idx + c_idx * cur_m].real()) + std::abs(work[r_idx + c_idx * cur_m].imag()));
+                }
+            }
+            double perturb = std::max(safemin, eps * local_max);
+
+            for (int d_idx = 0; d_idx < cur_m; d_idx++) {
+                if (std::abs(work[d_idx + d_idx * cur_m].real()) + std::abs(work[d_idx + d_idx * cur_m].imag()) < perturb) {
+                    double r_val = work[d_idx + d_idx * cur_m].real();
+                    double i_val = work[d_idx + d_idx * cur_m].imag();
+                    r_val = (r_val < 0.0) ? -perturb : perturb;
+                    work[d_idx + d_idx * cur_m] = { r_val, i_val };
+                }
+            }
+
             // Solve the local triangular system
             ztrsm_(&side, &uplo, &transa, &diag, &cur_m, &one_int, &one, work, &cur_m, work_rhs, &cur_m);
 
@@ -344,6 +363,25 @@ void zlalsl(int ldS, const std::complex<double> *S, int ldP, const std::complex<
                 }
                 for (r = 0; r < cur_m; r++) {
                     work_rhs[r] *= scale;
+                }
+            }
+
+            // Perturbation check for local 1x1 or mxm generalized block
+            double eps = std::numeric_limits<double>::epsilon();
+            double local_max = 0.0;
+            for (int c_idx = 0; c_idx < cur_m; c_idx++) {
+                for (int r_idx = 0; r_idx <= c_idx; r_idx++) {
+                    local_max = std::max(local_max, std::abs(work[r_idx + c_idx * cur_m].real()) + std::abs(work[r_idx + c_idx * cur_m].imag()));
+                }
+            }
+            double perturb = std::max(safemin, eps * local_max);
+
+            for (int d_idx = 0; d_idx < cur_m; d_idx++) {
+                if (std::abs(work[d_idx + d_idx * cur_m].real()) + std::abs(work[d_idx + d_idx * cur_m].imag()) < perturb) {
+                    double r_val = work[d_idx + d_idx * cur_m].real();
+                    double i_val = work[d_idx + d_idx * cur_m].imag();
+                    r_val = (r_val < 0.0) ? -perturb : perturb;
+                    work[d_idx + d_idx * cur_m] = { r_val, i_val };
                 }
             }
 
@@ -693,6 +731,21 @@ void ztgevc3(char side, char howmny, const int *select, int n, const std::comple
                 }
             }
 
+            // 5. scale eigenvectors
+            for (c = 0; c < nb_sel; c++) {
+                out_col = current_out_col + c;
+                double xmax = 0.0;
+                for (r = 0; r < n; r++) {
+                    xmax = std::max(xmax, std::abs(VR[r + out_col * ldvr].real()) + std::abs(VR[r + out_col * ldvr].imag()));
+                }
+                if (xmax > safemin) {
+                    double scale_val = 1.0 / xmax;
+                    for (r = 0; r < n; r++) {
+                        VR[r + out_col * ldvr] *= scale_val;
+                    }
+                }
+            }
+
             // Shift the panel boundary leftwards for the next outer iteration
             curr_col = i;
         }
@@ -836,6 +889,22 @@ void ztgevc3(char side, char howmny, const int *select, int n, const std::comple
                     }
                 }
             }
+
+            // 5. scale eigenvectors
+            for (c = 0; c < nb_sel; c++) {
+                out_col = current_out_col + c;
+                double xmax = 0.0;
+                for (r = 0; r < n; r++) {
+                    xmax = std::max(xmax, std::abs(VL[r + out_col * ldvl].real()) + std::abs(VL[r + out_col * ldvl].imag()));
+                }
+                if (xmax > safemin) {
+                    double scale_val = 1.0 / xmax;
+                    for (r = 0; r < n; r++) {
+                        VL[r + out_col * ldvl] *= scale_val;
+                    }
+                }
+            }
+
             current_out_col += nb_sel;
 
             // Shift the panel boundary rightwards for the next outer iteration
