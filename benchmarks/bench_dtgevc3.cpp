@@ -9,6 +9,7 @@
 
 constexpr int sizes[] = { 500, 707, 1000, 1414, 2000, 2828, 4000, 5657, 8000 };
 
+extern void dtrevc3(char side, char howmny, const int *select, int n, const double *T, int ldt, const double *wr, const double *wi, double *VL, int ldvl, double *VR, int ldvr, int mm, int *m, double *work, int lwork, int *info);
 
 extern "C" {
     void dtgevc_(const char *side, const char *howmny, const int *select, const int *n, const double *s, const int *lds, const double *p, const int *ldp, double *vl, const int *ldvl, double *vr, const int *ldvr, const int *mm, int *m, double *work, int *info);
@@ -90,7 +91,7 @@ static void BM_dtgevc(benchmark::State &state)
 {
     int n = state.range(0);
     char side = 'B', howmny = 'B';
-    double total_flops = (8.0 * n * n * n / 3.0) + (3 * n * n) - (11.0 * n / 3.0);
+    double total_flops = (11.0 * n * n * n / 3.0) + (n * n) - (2.0 * n / 3.0);
 
     std::vector<double> S(n * n), P(n * n);
     std::vector<double> alphar(n), alphai(n), beta(n);
@@ -112,7 +113,7 @@ static void BM_dtgevc3(benchmark::State &state)
 {
     int n = state.range(0);
     char side = 'B', howmny = 'B';
-    double total_flops = (8.0 * n * n * n / 3.0) + (3 * n * n) - (11.0 * n / 3.0);
+    double total_flops = (11.0 * n * n * n / 3.0) + (n * n) - (2.0 * n / 3.0);
 
     std::vector<double> S(n * n), P(n * n);
     std::vector<double> alphar(n), alphai(n), beta(n);
@@ -140,7 +141,7 @@ static void BM_dtrevc(benchmark::State &state)
 {
     int n = state.range(0);
     char side = 'B', howmny = 'B';
-    double total_flops = (5.0 * n * n * n / 3.0) + (n * n) - (2.0 * n / 3.0);
+    double total_flops = (8.0 * n * n * n / 3.0) + (n * n) + (n / 3.0);
 
     std::vector<double> T(n * n);
     generate_standard_real_triangular(n, T);
@@ -161,7 +162,7 @@ static void BM_dtrevc3(benchmark::State &state)
 {
     int n = state.range(0);
     char side = 'B', howmny = 'B';
-    double total_flops = (5.0 * n * n * n / 3.0) + (n * n) - (2.0 * n / 3.0);
+    double total_flops = (8.0 * n * n * n / 3.0) + (n * n) + (n / 3.0);
 
     std::vector<double> T(n * n);
     generate_standard_real_triangular(n, T);
@@ -185,9 +186,37 @@ static void BM_dtrevc3(benchmark::State &state)
     state.counters["FLOPS"] = benchmark::Counter(static_cast<double>(state.iterations()) * total_flops, benchmark::Counter::kIsRate);
 }
 
+static void BM_dtrevc4(benchmark::State &state)
+{
+    int n = state.range(0);
+    char side = 'B', howmny = 'B';
+    double total_flops = (8.0 * n * n * n / 3.0) + (n * n) + (n / 3.0);
+
+    std::vector<double> S(n * n), P(n * n);
+    std::vector<double> alphar(n), alphai(n), beta(n);
+    generate_generalized_real_triangular(n, S, P, alphar, alphai, beta);
+
+    std::vector<double> VL{ eye(n) }, VR{ eye(n) };
+    int m_out = 0, info = 0;
+
+    double dummy_work;
+    dtrevc3(side, howmny, nullptr, n, S.data(), n, alphar.data(), alphai.data(), VL.data(), n, VR.data(), n, n, &m_out, &dummy_work, -1, &info);
+
+    int lwork = static_cast<int>(dummy_work);
+    std::vector<double> work(lwork, 0.0);
+
+    for (auto _ : state) {
+        dtrevc3(side, howmny, nullptr, n, S.data(), n, alphar.data(), alphai.data(), VL.data(), n, VR.data(), n, n, &m_out, work.data(), lwork, &info);
+    }
+
+    state.SetComplexityN(n);
+    state.counters["FLOPS"] = benchmark::Counter(static_cast<double>(state.iterations()) * total_flops, benchmark::Counter::kIsRate);
+}
+
 BENCHMARK(BM_dtgevc)->Apply(apply_args);
 BENCHMARK(BM_dtgevc3)->Apply(apply_args);
 BENCHMARK(BM_dtrevc)->Apply(apply_args);
 BENCHMARK(BM_dtrevc3)->Apply(apply_args);
+BENCHMARK(BM_dtrevc4)->Apply(apply_args);
 
 BENCHMARK_MAIN();
