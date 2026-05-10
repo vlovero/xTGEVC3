@@ -1,4 +1,4 @@
-      SUBROUTINE ZLALSR(LDS, S, LDP, P, M_SIZE, LDV, RHS_LOC,
+        SUBROUTINE ZLALSR(LDS, S, LDP, P, M_SIZE, LDV, RHS_LOC,
      $                  X_PANEL_BASE, PANEL_ROWS, NB, ALPHA, BETA,
      $                  IS_DIAG, WORK, ASCALE, BSCALE, SAFEMIN, BIGNUM,
      $                  COL_MAP, NB_SEL)
@@ -19,6 +19,11 @@
       INTEGER ONE_INT
       CHARACTER SIDE, UPLO, TRANSA, DIAG
 
+      INTEGER D_IDX, R_IDX_P, C_IDX
+      DOUBLE PRECISION EPS, LOCAL_MAX, PERTURB, R_VAL, I_VAL
+      DOUBLE PRECISION DLAMCH
+      EXTERNAL DLAMCH
+
       ONE = DCMPLX(1.0D0, 0.0D0)
       ONE_INT = 1
       SIDE = 'L'
@@ -26,9 +31,11 @@
       TRANSA = 'N'
       DIAG = 'N'
 
+      EPS = DLAMCH('E')
+
       DO K = 1, NB
           C_PACKED = COL_MAP(K)
-*         Skip non-selected eigenvalues (using 0 as unselected)
+* Skip non-selected eigenvalues (using 0 as unselected)
           IF (C_PACKED .GT. 0) THEN
               A = ALPHA(K)
               B_VAL = BETA(K)
@@ -45,7 +52,7 @@
               BCOEFF = DCMPLX(T * BSCALE, 0.0D0) * A *
      $                 DCMPLX(ASCALE, 0.0D0)
 
-*             Limit handling for infinite eigenvalues
+* Limit handling for infinite eigenvalues
               IF (ABS(B_VAL) .LE. SAFEMIN .AND. 
      $            ABS(A) .GT. SAFEMIN) THEN
                   ACOEFF = DCMPLX(0.0D0, 0.0D0)
@@ -98,6 +105,33 @@
      $                      DCMPLX(SCALE_VAL, 0.0D0)
                       END DO
                   END IF
+
+* Perturbation check for local 1x1 or mxm generalized block
+                  LOCAL_MAX = 0.0D0
+                  DO C_IDX = 1, CUR_M
+                      DO R_IDX_P = 1, C_IDX
+                          LOCAL_MAX = MAX(LOCAL_MAX,
+     $                   ABS(DBLE(WORK(R_IDX_P + (C_IDX - 1)*CUR_M)))
+     $                 + ABS(DIMAG(WORK(R_IDX_P + (C_IDX - 1)*CUR_M))))
+                      END DO
+                  END DO
+                  PERTURB = MAX(SAFEMIN, EPS * LOCAL_MAX)
+
+                  DO D_IDX = 1, CUR_M
+                      IF (ABS(DBLE(WORK(D_IDX + (D_IDX - 1)*CUR_M))) +
+     $                    ABS(DIMAG(WORK(D_IDX + (D_IDX - 1)*CUR_M)))
+     $                    .LT. PERTURB) THEN
+                          R_VAL = DBLE(WORK(D_IDX + (D_IDX - 1)*CUR_M))
+                          I_VAL = DIMAG(WORK(D_IDX + (D_IDX - 1)*CUR_M))
+                          IF (R_VAL .LT. 0.0D0) THEN
+                              R_VAL = -PERTURB
+                          ELSE
+                              R_VAL = PERTURB
+                          END IF
+                          WORK(D_IDX + (D_IDX - 1)*CUR_M) = 
+     $                        DCMPLX(R_VAL, I_VAL)
+                      END IF
+                  END DO
 
                   CALL ZTRSM(SIDE, UPLO, TRANSA, DIAG, CUR_M, ONE_INT,
      $                       ONE, WORK, CUR_M, WORK(WORK_RHS_IDX + 1),

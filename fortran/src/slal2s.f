@@ -4,15 +4,30 @@
       INTEGER JPIV(*)
       REAL A(LDA, *), B(LDB, *)
       INTEGER K, P, I, C
-      REAL MAX_VAL, PIVOT, M1, M2, ALPHA, TMP
+      REAL MAX_VAL, PIVOT, M1, M2, ALPHA, TMP, EPS, SAFEMIN
+      REAL LOCAL_MAX, PERTURB
       CHARACTER SIDE, UPLO, TRANSA, DIAG
+      REAL DLAMCH
+      EXTERNAL DLAMCH
 
       INFO = 0
+      IF (N .EQ. 0) RETURN
 
-*     1. Forward Elimination (Process both superdiagonals)
+      EPS = DLAMCH('E')
+      SAFEMIN = DLAMCH('S')
+      LOCAL_MAX = 0.0E0
+
+      DO I = 1, N
+         DO K = MAX(1, I - 2), N
+            LOCAL_MAX = MAX(LOCAL_MAX, ABS(A(K, I)))
+         END DO
+      END DO
+      PERTURB = MAX(SAFEMIN, EPS * LOCAL_MAX)
+
+* 1. Forward Elimination (Process both superdiagonals)
       DO K = 1, N - 1
 
-*        --- Partial Pivoting ---
+* --- Partial Pivoting ---
          P = K
          MAX_VAL = ABS(A(K, K))
 
@@ -28,7 +43,7 @@
 
          JPIV(K) = P
 
-*        --- Column Swap ---
+* --- Column Swap ---
          IF (P .NE. K) THEN
             DO I = K, N
                TMP = A(I, K)
@@ -37,20 +52,25 @@
             END DO
          END IF
 
+* --- Zero Pivot Perturbation ---
          PIVOT = A(K, K)
-         IF (PIVOT .EQ. 0.0E0) THEN
-            INFO = K
-            RETURN
+         IF (ABS(PIVOT) .LT. PERTURB) THEN
+            IF (PIVOT .LT. 0.0E0) THEN
+               PIVOT = -PERTURB
+            ELSE
+               PIVOT = PERTURB
+            END IF
+            A(K, K) = PIVOT
          END IF
 
-*        --- Row Elimination ---
+* --- Row Elimination ---
          M1 = A(K, K + 1) / PIVOT
          A(K, K + 1) = M1
          DO I = K + 1, N
             A(I, K + 1) = A(I, K + 1) - M1 * A(I, K)
          END DO
 
-*        Eliminate the second superdiagonal if it exists
+* Eliminate the second superdiagonal if it exists
          IF (K + 2 .LE. N) THEN
             M2 = A(K, K + 2) / PIVOT
             A(K, K + 2) = M2
@@ -60,16 +80,26 @@
          END IF
       END DO
 
-*     2. Forward-substitution (Solve Lower Triangular System)
-      SIDE = 'L'
-      UPLO = 'L'
-      TRANSA = 'N'
-      DIAG = 'N'
-      ALPHA = 1.0E0
-      CALL STRSM(SIDE, UPLO, TRANSA, DIAG, N, NRHS, ALPHA, 
-     $           A, LDA, B, LDB)
+      IF (ABS(A(N, N)) .LT. PERTURB) THEN
+         IF (A(N, N) .LT. 0.0E0) THEN
+            A(N, N) = -PERTURB
+         ELSE
+            A(N, N) = PERTURB
+         END IF
+      END IF
 
-*     3. Backward permutation update
+* 2. Forward-substitution
+      IF (NRHS .GT. 0) THEN
+         SIDE = 'L'
+         UPLO = 'L'
+         TRANSA = 'N'
+         DIAG = 'N'
+         ALPHA = 1.0E0
+         CALL STRSM(SIDE, UPLO, TRANSA, DIAG, N, NRHS, ALPHA, 
+     $              A, LDA, B, LDB)
+      END IF
+
+* 3. Backward permutation update
       DO K = N - 1, 1, -1
          M1 = A(K, K + 1)
          IF (K + 2 .LE. N) THEN

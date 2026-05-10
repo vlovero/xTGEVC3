@@ -16,7 +16,7 @@
       INTEGER X_PANEL_OFFSET, TEMP_OFFSET, WORK_LOCAL_OFFSET
       INTEGER CURR_COL, I, NB, LD_X, C, R, CURR_ROW, J, J_NB, IS_DIAG
       INTEGER I_NEXT, REM_ROWS, J_NEXT, REM
-      DOUBLE PRECISION B_VAL, AR, AI, XR, XI
+      DOUBLE PRECISION B_VAL, AR, AI, XR, XI, XMAX
       DOUBLE PRECISION ALPHA_M1, BETA_1, ALPHA_1, ONE, ZERO
       DOUBLE PRECISION SAFEMIN, EPS, SMLNUM, BIGNUM
       DOUBLE PRECISION ANORM, BNORM, SUM_S, SUM_P
@@ -42,7 +42,7 @@
 
       BSIZE = 32
 
-*     Decode and validate parameters
+* Decode and validate parameters
       COMPUTE_RIGHT = LSAME(SIDE, 'R') .OR. LSAME(SIDE, 'B')
       COMPUTE_LEFT = LSAME(SIDE, 'L') .OR. LSAME(SIDE, 'B')
       DO_ALL = LSAME(HOWMNY, 'A') .OR. LSAME(HOWMNY, 'B')
@@ -60,7 +60,7 @@
          RETURN
       END IF
 
-*     Pass 1: Count total selected eigenvalues
+* Pass 1: Count total selected eigenvalues
       NUM_SEL = 0
       K_IDX = 1
       DO WHILE (K_IDX .LE. N)
@@ -93,7 +93,7 @@
          RETURN
       END IF
 
-*     Determine required workspace size
+* Determine required workspace size
       REQ_LWORK = 2 * N * (BSIZE + 1) + 4 * (BSIZE + 1) * (BSIZE + 1) + 
      $            2 * (BSIZE + 1)
 
@@ -120,13 +120,13 @@
 
       INFO = 0
 
-*     Retrieve machine constants
+* Retrieve machine constants
       SAFEMIN = DLAMCH('S')
       EPS = DLAMCH('E')
       SMLNUM = SAFEMIN / EPS
       BIGNUM = 1.0D0 / SMLNUM
 
-*     Compute the 1-norm of S and P
+* Compute the 1-norm of S and P
       ANORM = 0.0D0
       BNORM = 0.0D0
       DO COL = 1, N
@@ -144,17 +144,14 @@
       ASCALE = 1.0D0 / MAX(ANORM, SAFEMIN)
       BSCALE = 1.0D0 / MAX(BNORM, SAFEMIN)
 
-*     Partition the workspace
-*     X_panel at WORK(1)
+* Partition the workspace
       X_PANEL_OFFSET = 0
-*     Temp at WORK(1 + N*(BSIZE+1))
       TEMP_OFFSET = X_PANEL_OFFSET + N * (BSIZE + 1)
-*     work_local at WORK(1 + 2*N*(BSIZE+1))
       WORK_LOCAL_OFFSET = TEMP_OFFSET + N * (BSIZE + 1)
 
-*     ==================================================================
-*     Right Eigenvector Computation
-*     ==================================================================
+* ==================================================================
+* Right Eigenvector Computation
+* ==================================================================
       IF (COMPUTE_RIGHT) THEN
          CURRENT_OUT_COL = NUM_SEL
          CURR_COL = N
@@ -231,7 +228,6 @@
      $                     SAFEMIN, BIGNUM, COL_MAP, NB_SEL)
 
                IF (J .GT. 1) THEN
-*                 TempS and TempP offset
                   TOTAL_ELEMENTS = J_NB * NB_SEL
                   
                   C = 1
@@ -352,7 +348,7 @@
                   OUT_COL = CURRENT_OUT_COL + C
                   DO R = 1, N
                      VR(R, OUT_COL) = WORK(TEMP_OFFSET + R + 
-     $                                     (C - 1) * N)
+     $                                (C - 1) * N)
                   END DO
                END DO
             ELSE
@@ -360,20 +356,65 @@
                   OUT_COL = CURRENT_OUT_COL + C
                   DO R = 1, CURR_COL
                      VR(R, OUT_COL) = WORK(X_PANEL_OFFSET + R + 
-     $                                     (C - 1) * LD_X)
+     $                                (C - 1) * LD_X)
                   END DO
                   DO R = CURR_COL + 1, N
                      VR(R, OUT_COL) = 0.0D0
                   END DO
                END DO
             END IF
+
+* 5. scale eigenvectors
+            C = 1
+            DO WHILE (C .LE. NB)
+               C_PACKED = COL_MAP(C)
+               IF (C_PACKED .LT. 1) THEN
+                  IF (ALPHAI(I + C - 1) .EQ. 0.0D0) THEN
+                     C = C + 1
+                  ELSE
+                     C = C + 2
+                  END IF
+                  CYCLE
+               END IF
+
+               OUT_COL = CURRENT_OUT_COL + C_PACKED
+
+               IF (ALPHAI(I + C - 1) .EQ. 0.0D0) THEN
+                  XMAX = 0.0D0
+                  DO R = 1, N
+                     XMAX = MAX(XMAX, ABS(VR(R, OUT_COL)))
+                  END DO
+                  IF (XMAX .GT. SAFEMIN) THEN
+                     XMAX = 1.0D0 / XMAX
+                     DO R = 1, N
+                        VR(R, OUT_COL) = VR(R, OUT_COL) * XMAX
+                     END DO
+                  END IF
+                  C = C + 1
+               ELSE
+                  XMAX = 0.0D0
+                  DO R = 1, N
+                     XMAX = MAX(XMAX, ABS(VR(R, OUT_COL)) +
+     $                                ABS(VR(R, OUT_COL + 1)))
+                  END DO
+                  IF (XMAX .GT. SAFEMIN) THEN
+                     XMAX = 1.0D0 / XMAX
+                     DO R = 1, N
+                        VR(R, OUT_COL) = VR(R, OUT_COL) * XMAX
+                        VR(R, OUT_COL + 1) = VR(R, OUT_COL + 1) * XMAX
+                     END DO
+                  END IF
+                  C = C + 2
+               END IF
+            END DO
+
             CURR_COL = I - 1
          END DO
       END IF
 
-*     ==================================================================
-*     Left Eigenvector Computation
-*     ==================================================================
+* ==================================================================
+* Left Eigenvector Computation
+* ==================================================================
       IF (COMPUTE_LEFT) THEN
          CURRENT_OUT_COL = 0
          CURR_COL = 1
@@ -468,7 +509,7 @@
                      AR = ALPHAR(I + C - 1)
                      AI = ALPHAI(I + C - 1)
 
-                     T = 1.0D0 / MAX(ABS(AR) * ASCALE + ABS(AI) * 
+                     T = 1.0D0 / MAX(ABS(AR) * ASCALE + ABS(AI) *
      $                               ASCALE, ABS(B_VAL) * BSCALE, 
      $                               SAFEMIN)
                      ACOEFF = (T * B_VAL * BSCALE) * ASCALE
@@ -556,7 +597,7 @@
                   CALL DGEMM('T', 'N', REM, NB_SEL, J_NB, ALPHA_1,
      $                       P(CURR_ROW, J_NEXT + 1), LDP, 
      $                       WORK(WORK_LOCAL_OFFSET + 
-     $                            TOTAL_ELEMENTS + 1), J_NB, BETA_1,
+     $                       TOTAL_ELEMENTS + 1), J_NB, BETA_1,
      $                       WORK(X_PANEL_OFFSET + J_NEXT - I + 2), 
      $                       LD_X)
                END IF
@@ -589,8 +630,52 @@
                   END DO
                END DO
             END IF
-            CURRENT_OUT_COL = CURRENT_OUT_COL + NB_SEL
 
+* 5. scale eigenvectors
+            C = 1
+            DO WHILE (C .LE. NB)
+               C_PACKED = COL_MAP(C)
+               IF (C_PACKED .LT. 1) THEN
+                  IF (ALPHAI(I + C - 1) .EQ. 0.0D0) THEN
+                     C = C + 1
+                  ELSE
+                     C = C + 2
+                  END IF
+                  CYCLE
+               END IF
+
+               OUT_COL = CURRENT_OUT_COL + C_PACKED
+
+               IF (ALPHAI(I + C - 1) .EQ. 0.0D0) THEN
+                  XMAX = 0.0D0
+                  DO R = 1, N
+                     XMAX = MAX(XMAX, ABS(VL(R, OUT_COL)))
+                  END DO
+                  IF (XMAX .GT. SAFEMIN) THEN
+                     XMAX = 1.0D0 / XMAX
+                     DO R = 1, N
+                        VL(R, OUT_COL) = VL(R, OUT_COL) * XMAX
+                     END DO
+                  END IF
+                  C = C + 1
+               ELSE
+                  XMAX = 0.0D0
+                  DO R = 1, N
+                     XMAX = MAX(XMAX, ABS(VL(R, OUT_COL)) +
+     $                                ABS(VL(R, OUT_COL + 1)))
+                  END DO
+                  IF (XMAX .GT. SAFEMIN) THEN
+                     XMAX = 1.0D0 / XMAX
+                     DO R = 1, N
+                        VL(R, OUT_COL) = VL(R, OUT_COL) * XMAX
+                        VL(R, OUT_COL + 1) = VL(R, OUT_COL + 1) * XMAX
+                     END DO
+                  END IF
+                  C = C + 2
+               END IF
+            END DO
+
+            CURRENT_OUT_COL = CURRENT_OUT_COL + NB_SEL
             CURR_COL = I_NEXT + 1
          END DO
       END IF

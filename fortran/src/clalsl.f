@@ -1,4 +1,4 @@
-      SUBROUTINE CLALSL(LDS, S, LDP, P, M_SIZE, LDV, RHS_LOC,
+        SUBROUTINE CLALSL(LDS, S, LDP, P, M_SIZE, LDV, RHS_LOC,
      $                  X_PANEL_BASE, PANEL_ROWS, NB, ALPHA, BETA,
      $                  IS_DIAG, WORK, ASCALE, BSCALE, SAFEMIN, BIGNUM,
      $                  COL_MAP, NB_SEL)
@@ -19,6 +19,11 @@
       INTEGER ONE_INT
       CHARACTER SIDE, UPLO, TRANSA, DIAG
 
+      INTEGER D_IDX, R_IDX_P, C_IDX
+      REAL EPS, LOCAL_MAX, PERTURB, R_VAL, I_VAL
+      REAL DLAMCH
+      EXTERNAL DLAMCH
+
       ONE = CMPLX(1.0E0, 0.0E0)
       ONE_INT = 1
       SIDE = 'L'
@@ -26,9 +31,11 @@
       TRANSA = 'C'
       DIAG = 'N'
 
+      EPS = DLAMCH('E')
+
       DO K = 1, NB
           C_PACKED = COL_MAP(K)
-*         Skip non-selected eigenvalues
+* Skip non-selected eigenvalues
           IF (C_PACKED .GT. 0) THEN
               A = ALPHA(K)
               B_VAL = BETA(K)
@@ -47,7 +54,7 @@
               BCOEFF = CMPLX(T * BSCALE, 0.0E0) * A *
      $                 CMPLX(ASCALE, 0.0E0)
 
-*             Limit handling for infinite eigenvalues
+* Limit handling for infinite eigenvalues
               IF (ABS(B_VAL) .LE. SAFEMIN .AND. 
      $            ABS(A) .GT. SAFEMIN) THEN
                   ACOEFF = CMPLX(0.0E0, 0.0E0)
@@ -73,7 +80,7 @@
                           SR1 = S(K, R + ROW_OFFSET)
                           PR1 = P(K, R + ROW_OFFSET)
                           WORK(WORK_RHS_IDX + R) = -CONJG(ACOEFF * SR1-
-     $                                                     BCOEFF * PR1)
+     $                                                    BCOEFF * PR1)
                       END DO
                   ELSE
                       DO R = 1, CUR_M
@@ -89,8 +96,8 @@
      $                  ABS(AIMAG(WORK(WORK_RHS_IDX + R))))
                   END DO
 
-                  IF (RHS_MAX .GT. BIGNUM / 10.0D0) THEN
-                      SCALE_VAL = (BIGNUM / 10.0D0) / RHS_MAX
+                  IF (RHS_MAX .GT. BIGNUM / 10.0) THEN
+                      SCALE_VAL = (BIGNUM / 10.0) / RHS_MAX
                       DO C_SCALE = 1, NB_SEL
                           DO R_SCALE = 1, PANEL_ROWS
                               X_PANEL_BASE(R_SCALE, C_SCALE) =
@@ -104,6 +111,33 @@
      $                      CMPLX(SCALE_VAL, 0.0E0)
                       END DO
                   END IF
+
+* Perturbation check for local 1x1 or mxm generalized block
+                  LOCAL_MAX = 0.0E0
+                  DO C_IDX = 1, CUR_M
+                      DO R_IDX_P = 1, C_IDX
+                          LOCAL_MAX = MAX(LOCAL_MAX,
+     $                   ABS(REAL(WORK(R_IDX_P + (C_IDX - 1)*CUR_M)))
+     $                 + ABS(AIMAG(WORK(R_IDX_P + (C_IDX - 1)*CUR_M))))
+                      END DO
+                  END DO
+                  PERTURB = MAX(SAFEMIN, EPS * LOCAL_MAX)
+
+                  DO D_IDX = 1, CUR_M
+                      IF (ABS(REAL(WORK(D_IDX + (D_IDX - 1)*CUR_M))) +
+     $                    ABS(AIMAG(WORK(D_IDX + (D_IDX - 1)*CUR_M)))
+     $                    .LT. PERTURB) THEN
+                          R_VAL = REAL(WORK(D_IDX + (D_IDX - 1)*CUR_M))
+                          I_VAL = AIMAG(WORK(D_IDX + (D_IDX - 1)*CUR_M))
+                          IF (R_VAL .LT. 0.0E0) THEN
+                              R_VAL = -PERTURB
+                          ELSE
+                              R_VAL = PERTURB
+                          END IF
+                          WORK(D_IDX + (D_IDX - 1)*CUR_M) = 
+     $                        CMPLX(R_VAL, I_VAL)
+                      END IF
+                  END DO
 
                   CALL CTRSM(SIDE, UPLO, TRANSA, DIAG, CUR_M, ONE_INT,
      $                       ONE, WORK, CUR_M, WORK(WORK_RHS_IDX + 1),

@@ -3,8 +3,11 @@
       INTEGER N, NRHS, LDA, LDB, INFO
       REAL A(LDA, *), B(LDB, *)
       INTEGER J, K, PIVOT_ROW
-      REAL MAX_VAL, MULT1, MULT2, ALPHA, TMP
+      REAL MAX_VAL, MULT1, MULT2, ALPHA, TMP, EPS, SAFEMIN
+      REAL LOCAL_MAX, PERTURB
       CHARACTER SIDE, UPLO, TRANSA, DIAG
+      REAL DLAMCH
+      EXTERNAL DLAMCH
 
       INFO = 0
 
@@ -28,10 +31,21 @@
          RETURN
       END IF
 
-*     1. Forward Elimination (Column-oriented traversal over 2 subdiagonals)
+      EPS = DLAMCH('E')
+      SAFEMIN = DLAMCH('S')
+      LOCAL_MAX = 0.0E0
+
+      DO J = 1, N
+         DO K = J, MIN(J + 2, N)
+            LOCAL_MAX = MAX(LOCAL_MAX, ABS(A(K, J)))
+         END DO
+      END DO
+      PERTURB = MAX(SAFEMIN, EPS * LOCAL_MAX)
+
+* 1. Forward Elimination
       DO J = 1, N - 1
 
-*        --- Partial Pivoting ---
+* --- Partial Pivoting ---
          PIVOT_ROW = J
          MAX_VAL = ABS(A(J, J))
 
@@ -46,12 +60,7 @@
             END IF
          END IF
 
-         IF (MAX_VAL .EQ. 0.0E0) THEN
-            INFO = J
-            RETURN
-         END IF
-
-*        --- Row Swap ---
+* --- Row Swap ---
          IF (PIVOT_ROW .NE. J) THEN
             DO K = J, N
                TMP = A(J, K)
@@ -65,7 +74,16 @@
             END DO
          END IF
 
-*        --- Row Elimination ---
+* --- Zero Pivot Perturbation ---
+         IF (ABS(A(J, J)) .LT. PERTURB) THEN
+            IF (A(J, J) .LT. 0.0E0) THEN
+               A(J, J) = -PERTURB
+            ELSE
+               A(J, J) = PERTURB
+            END IF
+         END IF
+
+* --- Row Elimination ---
          MULT1 = A(J + 1, J) / A(J, J)
          A(J + 1, J) = 0.0E0
 
@@ -76,7 +94,7 @@
             B(J + 1, K) = B(J + 1, K) - MULT1 * B(J, K)
          END DO
 
-*        Eliminate the second subdiagonal element, if it is within bounds
+* Eliminate the second subdiagonal element
          IF (J + 2 .LE. N) THEN
             MULT2 = A(J + 2, J) / A(J, J)
             A(J + 2, J) = 0.0E0
@@ -90,12 +108,15 @@
          END IF
       END DO
 
-      IF (A(N, N) .EQ. 0.0E0) THEN
-         INFO = N
-         RETURN
+      IF (ABS(A(N, N)) .LT. PERTURB) THEN
+         IF (A(N, N) .LT. 0.0E0) THEN
+            A(N, N) = -PERTURB
+         ELSE
+            A(N, N) = PERTURB
+         END IF
       END IF
 
-*     2. Back-substitution (Solve Upper Triangular System)
+* 2. Back-substitution (Solve Upper Triangular System)
       IF (NRHS .GT. 0) THEN
          SIDE = 'L'
          UPLO = 'U'

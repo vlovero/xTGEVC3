@@ -1,4 +1,4 @@
-      SUBROUTINE ZTGEVC3(SIDE, HOWMNY, SELECT, N, S, LDS, P, LDP,
+        SUBROUTINE ZTGEVC3(SIDE, HOWMNY, SELECT, N, S, LDS, P, LDP,
      $                   ALPHA, BETA, VL, LDVL, VR, LDVR, MM, M, WORK,
      $                   LWORK, INFO)
       IMPLICIT NONE
@@ -20,12 +20,12 @@
       INTEGER CUR_OUT_COL, CURR_COL, I, NB, LD_X, NB_SEL, C, R
       INTEGER CURR_ROW, J, J_NB, IS_DIAG, OUT_COL, C_PACKED
       COMPLEX*16 A, B_VAL, ACOEFF, BCOEFF, XR
-      DOUBLE PRECISION T, UPD_MAX, SAFELIM, SCALE_VAL
+      DOUBLE PRECISION T, UPD_MAX, SAFELIM, SCALE_VAL, XMAX
       INTEGER TOT_ELEM, IDX, C_IDX, R_IDX
       INTEGER I_NEXT, REM_ROWS, J_NEXT, REM
       INTEGER BSIZE
 
-*     External functions
+* External functions
       DOUBLE PRECISION DLAMCH
       LOGICAL LSAME
       INTEGER IZLAPB, IZLANB
@@ -196,10 +196,10 @@
      $                                      (C_PACKED - 1) * LD_X)
                                   WORK(TS_PTR + R - 1 +
      $                                 (C_PACKED - 1) * J_NB) =
-     $                              ACOEFF * XR
+     $                                 ACOEFF * XR
                                   WORK(TP_PTR + R - 1 +
      $                                 (C_PACKED - 1) * J_NB) =
-     $                              BCOEFF * XR
+     $                                 BCOEFF * XR
                               END DO
                           END IF
                       END DO
@@ -231,7 +231,7 @@
                                   WORK(XPANEL_PTR + R_IDX - 1 +
      $                                 (C_IDX - 1) * LD_X) =
      $                              WORK(XPANEL_PTR + R_IDX - 1 +
-     $                                   (C_IDX - 1) * LD_X) *
+     $                              (C_IDX - 1) * LD_X) *
      $                              DCMPLX(SCALE_VAL, 0.0D0)
                               END DO
                           END DO
@@ -273,6 +273,23 @@
                       END DO
                   END DO
               END IF
+
+* 5. scale eigenvectors
+              DO C = 1, NB_SEL
+                  OUT_COL = CUR_OUT_COL + C
+                  XMAX = 0.0D0
+                  DO R = 1, N
+                      XMAX = MAX(XMAX, ABS(DBLE(VR(R, OUT_COL))) +
+     $                                 ABS(DIMAG(VR(R, OUT_COL))))
+                  END DO
+                  IF (XMAX .GT. SAFEMIN) THEN
+                      SCALE_VAL = 1.0D0 / XMAX
+                      DO R = 1, N
+                          VR(R, OUT_COL) = VR(R, OUT_COL) *
+     $                                     DCMPLX(SCALE_VAL, 0.0D0)
+                      END DO
+                  END IF
+              END DO
 
               CURR_COL = I - 1
           END DO
@@ -358,10 +375,10 @@
      $                                      (C_PACKED - 1) * LD_X)
                                   WORK(TS_PTR + R - 1 +
      $                                 (C_PACKED - 1) * J_NB) =
-     $                              DCONJG(ACOEFF) * XR
+     $                                 DCONJG(ACOEFF) * XR
                                   WORK(TP_PTR + R - 1 +
      $                                 (C_PACKED - 1) * J_NB) =
-     $                              DCONJG(BCOEFF) * XR
+     $                                 DCONJG(BCOEFF) * XR
                               END DO
                           END IF
                       END DO
@@ -394,7 +411,7 @@
                                   WORK(XPANEL_PTR + R_IDX - 1 +
      $                                 (C_IDX - 1) * LD_X) =
      $                              WORK(XPANEL_PTR + R_IDX - 1 +
-     $                                   (C_IDX - 1) * LD_X) *
+     $                              (C_IDX - 1) * LD_X) *
      $                              DCMPLX(SCALE_VAL, 0.0D0)
                               END DO
                           END DO
@@ -438,8 +455,25 @@
                       END DO
                   END DO
               END IF
-              CUR_OUT_COL = CUR_OUT_COL + NB_SEL
 
+* 5. scale eigenvectors
+              DO C = 1, NB_SEL
+                  OUT_COL = CUR_OUT_COL + C
+                  XMAX = 0.0D0
+                  DO R = 1, N
+                      XMAX = MAX(XMAX, ABS(DBLE(VL(R, OUT_COL))) +
+     $                                 ABS(DIMAG(VL(R, OUT_COL))))
+                  END DO
+                  IF (XMAX .GT. SAFEMIN) THEN
+                      SCALE_VAL = 1.0D0 / XMAX
+                      DO R = 1, N
+                          VL(R, OUT_COL) = VL(R, OUT_COL) *
+     $                                     DCMPLX(SCALE_VAL, 0.0D0)
+                      END DO
+                  END IF
+              END DO
+
+              CUR_OUT_COL = CUR_OUT_COL + NB_SEL
               CURR_COL = I_NEXT + 1
           END DO
       END IF
